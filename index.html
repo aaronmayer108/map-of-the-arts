@@ -262,10 +262,7 @@
   .card:hover::before { opacity: 1; }
 
   .card.leaf {
-    cursor: default;
-  }
-  .card.leaf:hover {
-    transform: none;
+    cursor: pointer;
   }
 
   .card-dot {
@@ -352,6 +349,54 @@
     animation: fadeUp .25s ease both;
   }
 
+  /* ── MODAL ── */
+  #modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(5px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  #modal.open { display: flex; }
+  .modal-box {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    max-width: 500px;
+    width: 100%;
+    position: relative;
+    animation: fadeUp .2s ease;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 16px;
+    background: none; border: none;
+    color: var(--text3); cursor: pointer;
+    font-size: 20px; line-height: 1; padding: 4px;
+    transition: color .15s;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-bottom: 0.8rem;
+  }
+  .modal-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.35rem; font-weight: 600;
+    color: var(--text); margin-bottom: 0.85rem;
+    line-height: 1.2; padding-right: 2rem;
+  }
+  .modal-body {
+    font-size: 14px; color: var(--text2);
+    line-height: 1.75;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
     h1 { font-size: 2.4rem; }
@@ -398,6 +443,15 @@
   <p>A map of human artistic expression — inevitably incomplete, always evolving.</p>
   <p style="margin-top:6px">Browse freely. Every art form is a door.</p>
 </footer>
+
+<div id="modal" onclick="closeModal(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-dot" id="modal-dot"></div>
+    <h2 class="modal-title" id="modal-title"></h2>
+    <p class="modal-body" id="modal-body"></p>
+  </div>
+</div>
 
 <script>
 const DATA = [
@@ -795,6 +849,457 @@ const DATA = [
   ]},
 ];
 
+// ── DESCRIPTIONS ──
+const DESCRIPTIONS = {
+  // Music – Vocal
+  'opera': `The grandest of sung art forms, combining orchestral music, elaborate staging, and operatic voices to tell dramatic stories. Rooted in late Renaissance Italy, it remains one of the most technically demanding and emotionally overwhelming experiences in all of art.`,
+  'art-song': `A composed song for solo voice and piano, typically setting a poem to music. The German Lied tradition — Schubert, Schumann, Wolf — elevated this intimate form into a profound vehicle for literary and musical expression.`,
+  'choral': `Music written for a choir of multiple voice parts singing in harmony. From Renaissance polyphony to contemporary choral works, the form ranges from devotional plainchant to jubilant mass celebrations.`,
+  'barbershop': `Vocal harmony singing in four close parts without instrumental accompaniment. Barbershop and the broader a cappella tradition prize blend, precise tuning, and the resonant "ringing chord" that seems to produce a fifth voice from the four.`,
+  'throat': `A family of vocal techniques from Tuvan and Mongolian traditions that allow a single singer to produce multiple pitches simultaneously. The overtone series of a sustained drone is shaped into melody by the resonant cavities of the body.`,
+  'sacred-chant': `Unaccompanied liturgical singing including Gregorian chant, Byzantine chant, and Islamic call to prayer. These ancient forms prioritize textual clarity and spiritual contemplation over melodic display.`,
+  'pop-vocal': `The art of singing in contemporary popular music, from stadium anthems to intimate bedroom recordings. Modern pop vocalism draws from gospel, soul, and R&B, valuing expressiveness and timbral character as much as technical range.`,
+  'blues-vocal': `A deeply emotive singing style rooted in African American experience, characterized by blue notes, call-and-response phrasing, and raw vocal storytelling. The blues voice conveys suffering, defiance, and joy with uncommon directness.`,
+  'gospel': `Sacred music of African American Christian tradition, combining fervent vocal expression, call-and-response, and communal participation. Gospel gave birth to soul music and remains one of the most powerful forms of collective singing.`,
+  'beatbox': `The art of creating percussion and rhythm using only the mouth, lips, tongue, and throat. What began as a hip-hop element has evolved into a sophisticated performance art with its own international competitions and virtuosos.`,
+  // Music – Instrumental
+  'chamber': `Music for a small ensemble — typically two to eight players — with one instrument per part. Historically performed in private rooms, chamber music prizes intimacy and conversational interplay between equal voices.`,
+  'orchestral': `Music written for a full symphony orchestra of potentially a hundred or more musicians. The symphonic tradition, from Haydn to Mahler to today, explores the largest possible palette of orchestral color and emotional scale.`,
+  'solo-piano': `Music written for a single pianist, exploiting the piano's extraordinary range from whisper to thunder. The solo piano repertoire — from Bach's Well-Tempered Clavier to Chopin's nocturnes to contemporary works — is among the richest in Western music.`,
+  'guitar-classical': `Fingerstyle guitar playing in the European classical tradition, originating from the lute and vihuela. The classical guitarist uses nylon strings and reads from notation, performing Bach transcriptions, Spanish romantics, and contemporary works.`,
+  'organ': `The king of instruments — a wind instrument controlled by multiple keyboards and foot pedals capable of a vast range from whisper to thunderous roar. Pipe organs are built into cathedrals and concert halls; their repertoire spans from Bach to Messiaen.`,
+  'wind-ensemble': `Music performed by woodwind and brass instruments, from chamber duets to full concert bands. The wind ensemble has its own rich repertoire and is the primary medium for composers such as Grainger and Persichetti.`,
+  'percussion-ensemble': `Music performed primarily by percussion instruments, encompassing everything from marimba duets to large-scale works for multiple players on dozens of instruments. The ensemble's rhythmic potential is matched by its extraordinary range of timbre.`,
+  'string-quartet': `Two violins, viola, and cello — one of the most revered chamber ensembles. From Haydn's 68 quartets to Shostakovich's 15, the string quartet has inspired some of the most searching and personal music ever written.`,
+  // Music – Folk
+  'folk-euro': `The traditional music of European rural communities, preserved through oral transmission across centuries. Regional styles vary enormously — from Hungarian csárdás to French chanson to Iberian fado — yet share a directness and communal function.`,
+  'folk-appalachian': `The music of the Appalachian mountain regions of the American South, blending British Isles balladry with African American influences. Old-time fiddle tunes, mountain songs, and shape-note singing are its central traditions.`,
+  'folk-celtic': `The traditional music of Celtic nations — Ireland, Scotland, Wales, Brittany, and Galicia — characterized by pentatonic and modal melodies. It encompasses jigs, reels, airs, and laments, played on fiddle, uilleann pipes, harp, and similar instruments.`,
+  'folk-nordic': `Traditional music from Scandinavia, including Swedish polska, Norwegian Hardanger fiddle music, and the Sámi joik. Nordic folk often carries a spare, haunting quality shaped by vast landscapes and long winters.`,
+  'folk-balkan': `The traditional music of the Balkans — Bulgaria, Romania, Serbia, Macedonia, and surrounding countries — famous for complex asymmetrical meters and rich polyphony. Brass bands, gaidas, and women's choirs are emblematic of the region.`,
+  'folk-african': `The vast and diverse traditional musical practices of sub-Saharan Africa, encompassing hundreds of distinct cultures. Polyrhythm, call-and-response, and the deep integration of music with dance and community life are common threads.`,
+  'folk-latam': `The traditional music of Latin America beyond the main commercial genres — Andean pan-pipe music, Mexican son, Afro-Brazilian candomblé rhythms, and the varied folk traditions of South America.`,
+  'folk-mena': `The traditional music of the Middle East and North Africa, rooted in the maqam modal system. It includes the music of Bedouin communities, Egyptian classical song, Sufi devotional music, and many other regional forms.`,
+  'folk-south-asian': `The diverse traditional music of South Asia beyond classical forms — Punjabi bhangra, Rajasthani folk, Baul songs of Bengal, and dozens of regional traditions tied to agricultural cycles, festivals, and devotional life.`,
+  'folk-east-asian': `Traditional music from China, Japan, Korea, and neighboring cultures. From Chinese erhu ballads to Japanese min'yō folk songs to Korean pansori, these traditions carry distinct aesthetics developed over millennia.`,
+  'folk-pacific': `The traditional music of Pacific Island cultures and Indigenous peoples of Oceania and the Americas. Rooted in ceremony, oral history, and connection to land, it encompasses hula drumming, Maori waiata, and Aboriginal song lines.`,
+  // Music – World classical
+  'hindustani': `The classical music tradition of North India, characterized by improvisation within frameworks of ragas (melodic modes) and talas (rhythmic cycles). A raga performance can last hours, moving through a structured emotional arc from contemplative to ecstatic.`,
+  'carnatic': `The classical music of South India, more composition-oriented than its Hindustani counterpart, with a vast repertoire of kriti and varnam forms. Carnatic music prizes intricate ornamentation, complex rhythmic play, and the primacy of the voice.`,
+  'maqam': `The modal system underlying classical Arabic and broader Middle Eastern music, with each maqam carrying distinct emotional and spiritual associations. The tradition encompasses solo improvisation (taqsim), ensemble forms, and a vast repertoire of classical song.`,
+  'gagaku': `The ancient court music of Japan, one of the oldest surviving musical traditions in the world. Gagaku's otherworldly blend of winds, strings, and percussion creates a sound that seems to exist outside of ordinary time.`,
+  'gamelan': `The ensemble music of Java and Bali, built on tuned bronze percussion — gongs, metallophones, and drums. Gamelan music influenced 20th-century Western composers including Debussy, Messiaen, and Steve Reich, and remains central to Indonesian cultural life.`,
+  'guqin-music': `Music for the guqin, a seven-stringed zither and one of China's oldest and most revered instruments. Guqin music values understated beauty, meditative depth, and the resonance of silence — it is music for contemplation rather than display.`,
+  'persian-classical': `The classical music of Iran, organized around modal frameworks called dastgāh. Persian classical music combines composed pieces with improvisation and is distinguished by its microtonal inflections and lyrical melancholy.`,
+  // Music – Jazz & blues
+  'trad-jazz': `The earliest jazz style, originating in New Orleans in the early 20th century. It features collective improvisation among cornet, clarinet, and trombone over a propulsive rhythm section, with a joyful, celebratory character.`,
+  'swing': `Big band jazz of the 1930s and 40s, organized around written arrangements for large ensembles. Swing became America's popular music, with bandleaders like Duke Ellington and Benny Goodman drawing millions to the dance floor.`,
+  'bebop': `The revolutionary jazz style that emerged in the 1940s, featuring fast tempos, complex harmonies, and virtuosic improvisation. Charlie Parker and Dizzy Gillespie transformed jazz from dance music into an art music of extraordinary sophistication.`,
+  'cool-jazz': `A reaction to bebop's intensity, cool jazz brought a more relaxed, cerebral approach to improvisation. Miles Davis's Birth of the Cool and the West Coast jazz scene defined the sound of the 1950s with understated elegance.`,
+  'hard-bop': `A mid-1950s return to blues roots and gospel influences, harder-edged than cool jazz. Art Blakey's Jazz Messengers and Horace Silver's groups defined a driving, soulful style that became foundational to the jazz mainstream.`,
+  'modal-jazz': `Jazz organized around modal scales rather than the rapid chord changes of bebop, creating space for extended, meditative improvisation. Miles Davis's Kind of Blue (1959) is the canonical example — still the best-selling jazz album ever made.`,
+  'free-jazz': `Jazz that abandons preset chord progressions, meters, and sometimes pitch conventions entirely. Ornette Coleman's 1960 album Free Jazz marked a rupture; Cecil Taylor and Albert Ayler subsequently pushed into pure sonic expression.`,
+  'fusion': `A marriage of jazz improvisation with rock rhythms and electric instruments, pioneered by Miles Davis's Bitches Brew (1970). Fusion expanded jazz's sonic palette and commercial reach while remaining controversial among jazz purists.`,
+  'delta-blues': `The earliest blues tradition, from the Mississippi Delta, characterized by raw solo voice and guitar. Robert Johnson, Son House, and Charlie Patton established an aesthetic of stark, supernatural-tinged storytelling.`,
+  'chicago-blues': `The amplified, electrified blues that developed in Chicago in the 1940s as Delta musicians moved north. Muddy Waters, Howlin' Wolf, and Little Walter created the sound that directly inspired rock and roll.`,
+  'rhythm-and-blues': `The commercial urban Black music of the late 1940s and 1950s — more polished than Delta blues, more rhythmically insistent. R&B bridged the gap between blues and rock and roll, becoming the foundation of modern Black popular music.`,
+  // Music – Pop & rock
+  'rock': `A broad genre descended from blues and country, built on electric guitar, bass, drums, and voice. From Chuck Berry to Led Zeppelin to Radiohead, rock has been the dominant form of popular music for over 70 years.`,
+  'pop': `Music designed for mass appeal, prioritizing catchy melody, accessible production, and emotional directness. Pop is less a genre than a mode — it absorbs whatever sounds are currently exciting and packages them for maximum reach.`,
+  'metal': `Descended from hard rock, heavy metal is defined by high amplification, distorted guitars, and often extreme dynamics. From Black Sabbath's doom to thrash metal's speed to black metal's cold fury, it encompasses an enormous stylistic range.`,
+  'punk': `A raw, aggressive reaction to rock's perceived excess, stripped down to three chords and genuine urgency. Post-punk expanded this into stranger territory — Joy Division, Wire, Gang of Four — making space for decades of independent music.`,
+  'indie': `Music made outside major label systems, now more a sensibility than an industry category. Indie prizes artistic autonomy and values originality over commercial polish, and has become one of the most creatively fertile spaces in contemporary music.`,
+  'country': `Music rooted in Appalachian folk, cowboy songs, and Southern gospel, centered on storytelling, pedal steel guitar, and emotional directness. From Hank Williams to Dolly Parton, country has always been in deep conversation with American identity.`,
+  'reggae': `Jamaican popular music characterized by a distinctive offbeat rhythmic feel and Rastafarian spiritual themes. Bob Marley brought reggae to global consciousness; ska and dub are its direct antecedents and descendants.`,
+  'soul': `African American popular music fusing gospel intensity with R&B rhythms and secular themes. Otis Redding, Aretha Franklin, and Marvin Gaye created some of the 20th century's most emotionally direct and powerful music.`,
+  'rnb': `Contemporary R&B blends soul, hip-hop, and electronic production into a sophisticated, sensual pop form. Artists like Beyoncé, Frank Ocean, and SZA have pushed R&B into some of the most ambitious territory in contemporary music.`,
+  'hip-hop': `A cultural movement born in the Bronx in the 1970s, with rap — rhymed vocal delivery over rhythmic beats — at its center. Hip-hop has become the dominant global popular music and its most acute ongoing form of social commentary.`,
+  'latin-pop': `Pop music incorporating Latin rhythms, Spanish-language lyrics, and influences ranging from salsa to reggaeton. Shakira, Bad Bunny, and J Balvin represent the genre's current global commercial and cultural dominance.`,
+  // Music – Electronic
+  'techno': `Repetitive, machine-like electronic music originating in Detroit in the mid-1980s. Techno reflects the industrial landscape of its birthplace and has spread globally into a vast network of clubs, festivals, and subcultures.`,
+  'house': `Dance music born in Chicago's Black and queer clubs in the early 1980s, built on synthesizers, drum machines, and soulful vocals. House music's four-on-the-floor kick drum has become the heartbeat of global club culture.`,
+  'drum-and-bass': `A genre of fast electronic music characterized by syncopated breakbeats and heavy sub-bass, emerging from the UK rave scene in the early 1990s. Its rhythmic complexity and sonic intensity make it one of the most technically demanding forms to produce and perform.`,
+  'ambient': `Music that creates atmosphere and texture rather than foregrounding melody or rhythm. Brian Eno coined the term in 1978; ambient now encompasses everything from minimalist piano to dense digital soundscapes designed to dissolve into the environment.`,
+  'noise': `Music that embraces sonic extremity — distortion, feedback, and harsh frequencies as primary materials. From industrial music to Japanese noise to power electronics, this tradition challenges the very definition of what music is.`,
+  'electroacoustic': `Music that combines electronic sound processing with acoustic sources, typically in a concert context. Musique concrète, pioneered by Pierre Schaeffer and Pierre Henry, established the idea that any recorded sound could be musical material.`,
+  'edm': `A broad umbrella for electronic dance music designed for festival and club contexts. EDM's big-room drops, massive production values, and star-DJ culture have made it one of the most commercially successful musical forms of the 21st century.`,
+  'synth-pop': `Pop music built primarily around synthesizers and drum machines. Emerging in the late 1970s with Kraftwerk and Depeche Mode, synth-pop has resurfaced in countless subsequent waves — most recently in the 2010s and 2020s.`,
+  'experimental-elec': `Electronic music that resists commercial categories, exploring texture, abstraction, and the outer limits of what sound can do. Artists like Alva Noto, Ryoji Ikeda, and Arca work in a zone where music meets visual art and philosophy.`,
+  // Music – 20th/21st c
+  'impressionism': `A movement in classical music, primarily French, that sought to evoke atmosphere and sensation rather than narrative. Debussy and Ravel replaced Germanic structural logic with shimmering harmonics, whole-tone scales, and a painterly approach to orchestration.`,
+  'serialism': `A compositional method that organizes pitches — and sometimes rhythm, dynamics, and timbre — according to fixed sequences or rows. Arnold Schoenberg's twelve-tone method sought to replace tonality with a new kind of structural logic.`,
+  'minimalism-music': `Music based on the slow evolution of simple repeated patterns. Steve Reich, Philip Glass, and Terry Riley created an aesthetic that was radical in the 1960s and remains central to contemporary composition and post-classical music.`,
+  'spectralism': `A compositional approach that derives musical material from the analysis of a sound's physical properties — the overtone spectrum of a single note becomes the blueprint for an entire piece. Gérard Grisey and Tristan Murail are its primary figures.`,
+  'new-complexity': `A movement in composed music that embraces extreme notational and performative difficulty. Brian Ferneyhough and his circle created music of almost illegible density — works that demand performers confront the limits of human precision.`,
+  'microtonality': `Music that uses intervals smaller than the semitones of standard Western tuning. Quarter tones, just intonation, and custom tuning systems open up vast new sonic territory, explored by composers from Harry Partch to Georg Friedrich Haas.`,
+  'aleatoric': `Music that incorporates chance or performer choice as a structural element. John Cage's 4'33" is the extreme case; aleatoric principles infiltrate much 20th-century music, from Lutosławski's controlled aleatorism to graphic scores.`,
+  'film-score': `Music composed to accompany film and video games, designed to amplify emotional and narrative effect. Composers like Bernard Herrmann, Ennio Morricone, and John Williams created some of the 20th century's most beloved and widely heard music.`,
+  // Poetry – Lyric
+  'sonnet': `A 14-line poem with strict rhyme and meter, originating in medieval Italy. Shakespeare's 154 sonnets and Petrarch's Canzoniere demonstrate how this tightly constrained form becomes a pressure cooker for emotional complexity and linguistic invention.`,
+  'ode': `A lyric poem of praise or celebration, typically written in an elevated style. From Pindar's Greek odes celebrating Olympic victors to Keats's meditations on a Grecian urn, the ode has been a vehicle for poetry's most exalted ambitions.`,
+  'elegy': `A poem of mourning, grief, or meditative lamentation. The elegy's long history — from Ovid to Gray's Elegy Written in a Country Churchyard to Rilke's Duino Elegies — reflects poetry's unique capacity to transform personal loss into universal art.`,
+  'ghazal': `A classical Arabic and Persian form consisting of self-contained couplets unified by a refrain and the poet's signature. The ghazal's themes are typically love, loss, and mystical longing; Rumi, Hafez, and Ghalib are its greatest practitioners.`,
+  'haiku': `A short Japanese form of three lines capturing a moment, typically involving nature and a seasonal reference. Behind its apparent simplicity lies a tradition of profound aesthetic principles — ma (negative space), wabi-sabi, and the juxtaposition of two images.`,
+  'confessional': `Poetry that draws directly on the poet's own life, psychological struggles, and private experiences. Sylvia Plath, Anne Sexton, and Robert Lowell redefined mid-20th-century American poetry by bringing previously unspeakable personal material onto the page.`,
+  'imagism': `An early 20th-century movement demanding clarity of image, hardness of language, and freedom from ornament. Pound's "In a Station of the Metro" — fourteen words — is the movement's emblem: direct, visual, and complete.`,
+  'pastoral': `Poetry set in idealized rural landscapes, exploring the tension between nature and civilization. From Theocritus to Marvell to contemporary eco-poetry, the pastoral uses the country as a lens for reflecting on what the city has lost.`,
+  // Poetry – Epic & narrative
+  'epic': `Long narrative poems following heroic figures through vast adventures and cosmic conflicts. Homer's Iliad and Odyssey, Virgil's Aeneid, and Milton's Paradise Lost are monuments of Western culture; the form appears in every major world literary tradition.`,
+  'ballad': `A narrative poem or song that tells a story, typically of tragedy, betrayal, or the supernatural. The folk ballad tradition gave rise to the literary ballad of the Romantics and continues into the song tradition through Dylan and beyond.`,
+  'verse-novel': `A full-length narrative in verse — the sustained challenge of telling a novel-length story through poetic language. Pushkin's Eugene Onegin, Derek Walcott's Omeros, and Anne Carson's Autobiography of Red are towering examples of the form.`,
+  'romance-poetry': `Medieval narrative poems telling of knights, ladies, quests, and courtly love. The Arthurian romances, Chaucer's Canterbury Tales, and Ariosto's Orlando Furioso are landmarks of a form that shaped European storytelling for centuries.`,
+  'mythology-poetry': `Poetry that retells, extends, or interrogates mythological narratives. From Ovid's Metamorphoses to Seamus Heaney's translations of Beowulf, mythological poetry connects the present to the deepest layers of human story.`,
+  // Poetry – Dramatic
+  'dramatic-monologue': `A poem in which a speaker — usually not the poet — addresses an implied listener, revealing character through the gap between what they say and what the reader understands. Browning's "My Last Duchess" is the supreme example.`,
+  'verse-drama': `Plays written in verse, a tradition stretching from Greek tragedy through Shakespeare to T.S. Eliot and contemporary playwrights. Verse drama asks language to carry both dramatic and musical weight simultaneously.`,
+  'spoken-word': `Performance poetry that prioritizes the spoken voice, rhythm, and audience connection. Rooted in oral tradition and amplified by the slam movement, spoken word bridges poetry and theatre, making language a physical, communal experience.`,
+  // Poetry – Fixed forms
+  'villanelle': `A 19-line poem with two repeating rhymes and two refrains, creating an almost obsessive circularity. Dylan Thomas's "Do Not Go Gentle into That Good Night" demonstrates how its tight architecture can make grief feel structurally inevitable.`,
+  'sestina': `A 39-line poem that repeats six end-words in a shifting pattern across six stanzas, then uses all six in a closing tercet. The form's constraints force unexpected, often profound juxtapositions of language and meaning.`,
+  'pantoum': `A Malay form in which the second and fourth lines of each stanza become the first and third of the next, creating interlocking repetition throughout. Its circular logic produces a dreamlike, incantatory effect.`,
+  'terza-rima': `Dante's form — interlocking triplets (ABA BCB CDC...) that pull the reader forward through an endless chain of rhyme. The entire Divine Comedy is built on this form's propulsive, inexorable logic.`,
+  'rondeau': `A French fixed form using a refrain that returns at the close — John McCrae's "In Flanders Fields" is a celebrated example. The triolet is a shorter variant, with lines repeating in a tight eight-line structure.`,
+  'acrostic': `A poem where the first letters of each line spell out a word, phrase, or name. Shaped poetry arranges words to form a visual image on the page; both traditions explore the intersection of verbal meaning and visual form.`,
+  // Poetry – Free verse
+  'vers-libre': `Free verse in the French tradition — poetry liberated from strict meter and rhyme. Walt Whitman's long, breath-driven lines in Leaves of Grass established the American version; the French symbolists developed their own simultaneously.`,
+  'projective-verse': `Charles Olson's influential theory that a poem's form should emerge from the breath and energy of the poet's body. "The poem itself must, at all points, be a high energy-construct" — this approach shaped the Black Mountain and Beat poets.`,
+  'breath-line': `Poetry that uses the natural breath as its unit of measure rather than the metrical foot or syllable count. Allen Ginsberg's Howl exemplifies this: each line is a breath, making the poem a physical performance even on the page.`,
+  'prose-poem': `Writing that occupies the border between poetry and prose — abandoning line breaks while retaining poetic compression, imagery, and intensity. Baudelaire's Paris Spleen pioneered the form; it is now one of the most prevalent modes in contemporary poetry.`,
+  // Poetry – Oral
+  'griot': `A West African oral historian, storyteller, and keeper of communal memory. The griot's role is both artistic and social — to preserve genealogies, sing praises, and tell the stories that hold a community together across generations.`,
+  'skaldic': `Old Norse court poetry composed by professional poet-musicians (skalds) for Scandinavian kings and chieftains. Skaldic verse is fiendishly complex — kennings (metaphorical compound words) and intricate meters make it the most formally demanding tradition in medieval poetry.`,
+  'troubadour': `Medieval Occitan lyric poets who invented the dominant forms of Western love poetry. The troubadours' concept of courtly love — idealized, frustrated, and ennobling — became the template for European romantic expression for centuries.`,
+  'qasida': `A long praise poem of the Arabic and Persian literary tradition, often running to dozens of couplets. The qasida was the primary vehicle for public poetry in the Islamic world, used to praise rulers, mourn the dead, and mark great occasions.`,
+  'slam': `Competitive performance poetry judged by audience members. The slam movement democratized poetry by valuing voice, passion, and community connection over academic credentials or publication history.`,
+  'rap-lyrics': `The lyrical dimension of hip-hop — rhymed verses delivered over rhythmic beats. At its best, rap represents a continuation and transformation of oral poetry: dense with wordplay, cultural reference, rhythmic complexity, and social commentary.`,
+  // Poetry – Visual/Experimental
+  'concrete-poetry': `Poetry that treats the visual arrangement of words on the page as integral to the meaning. Letters, words, and white space become graphic elements; the poem is seen as much as it is read.`,
+  'language-poetry': `An American avant-garde movement that foregrounds the materiality of language itself, disrupting conventional syntax and meaning. Ron Silliman, Lyn Hejinian, and others challenged the lyric "I" and the assumed transparency of poetic language.`,
+  'flarf': `Poetry that embraces internet-age language — Google searches, spam, forum posts — as raw material. Flarf is deliberately crude and comic, questioning what counts as "poetic" language and who gets to decide.`,
+  'erasure': `Poetry created by selectively removing words from an existing text, revealing a new poem within it. The poet-editor's choices are political as much as aesthetic — whose texts are erased, and what is left when the original is stripped back?`,
+  // Visual – Painting
+  'oil': `Painting with pigments suspended in drying oil, the dominant medium of Western painting from the 15th century to the present. Oil paint's slow drying time allows blending and reworking; its luminosity made possible the great achievements of Titian, Rembrandt, and Vermeer.`,
+  'watercolor': `Painting with water-soluble pigments on paper, exploiting transparency, bleed, and the white of the page. Watercolor rewards speed and spontaneity; Turner and Winslow Homer demonstrated its capacity for atmospheric grandeur.`,
+  'acrylic': `A synthetic painting medium that dries quickly to a plastic film. Acrylics enabled the flat, hard-edge abstraction of 1960s Color Field painting; they remain popular for their versatility, vibrant color, and non-toxicity.`,
+  'tempera': `Pigment mixed with egg yolk, used in Byzantine icons and early Italian panel painting before the advent of oil. Tempera creates luminous, precise marks and was the medium of Botticelli, Fra Angelico, and early Renaissance masters.`,
+  'fresco': `Painting on wet plaster, so the pigments are absorbed into the wall itself. Fresco's demands for speed and certainty made it one of the great tests of a painter's mastery; Michelangelo's Sistine Chapel ceiling is its supreme monument.`,
+  'encaustic': `Painting with pigmented hot wax, one of the oldest techniques in Western art. Encaustic creates a distinctive luminosity and texture; Jasper Johns used it in his early paintings of flags and targets to give familiar images an uncanny material presence.`,
+  'gouache': `Opaque watercolor with more body and covering power than transparent watercolor. Graphic designers, illustrators, and fine artists prize gouache for its flat, matte finish, vivid color, and capacity for bold graphic effects.`,
+  'ink-painting': `The East Asian tradition of painting with ink on paper or silk using a brush. Chinese and Japanese ink painting values the calligraphic brushstroke as an expressive act — the quality of the line reveals the artist's mind and state of being.`,
+  'miniature-painting': `Extremely small-scale paintings, often portraits or narrative scenes, produced in Persia, Mughal India, and medieval Europe. Miniatures require extraordinary technical precision and a jewel-like approach to color and compositional detail.`,
+  'icon-painting': `Devotional paintings of sacred figures in the Byzantine and Orthodox Christian tradition. Icons are not mere illustrations but are considered windows into the divine; their making follows strict canonical rules and is understood as a form of prayer.`,
+  // Visual – Drawing
+  'charcoal': `Drawing with charred wood on paper — the most direct and malleable of drawing materials. Charcoal can be smudged, erased, and reworked; it rewards both bold gestural marks and delicate tonal modeling across a full range of values.`,
+  'graphite': `Drawing with graphite pencils, from light sketching to highly finished studio work. Graphite's range — from barely visible marks to deep black — makes it the most ubiquitous drawing tool and the foundation of most artists' visual thinking.`,
+  'pen-ink': `Drawing with a pen or quill and ink, requiring commitment and precision. The cross-hatching of Dürer's engravings and the nervous energy of Rembrandt's pen sketches show ink's range from monumental finish to intimate spontaneity.`,
+  'pastel': `Drawing with sticks of pure pigment, combining the immediacy of drawing with the color range of painting. Degas's pastel dancers capture movement and light with an almost photographic directness; pastels require careful preservation to prevent fading.`,
+  'contour': `Drawing that follows the edges and surfaces of subjects with an uninterrupted line. Life drawing — from the live human figure — remains the foundational discipline of Western art training, a practice unchanged for centuries.`,
+  'illustration': `Images created to accompany and interpret text — in books, magazines, advertising, and editorial contexts. Illustration occupies fertile ground between fine art and design, producing work that must communicate clearly while having genuine artistic vitality.`,
+  'comic-art': `Sequential art telling stories through panels, speech bubbles, and visual narrative. Comics are the only art form native to the printed page; from newspaper strips to graphic novels, they have developed a unique visual language entirely their own.`,
+  'storyboard': `A sequence of drawn panels planning the shots of a film, animation, or advertisement. Storyboarding is where cinematic vision becomes concrete; great storyboard artists like Saul Bass elevated the form to a fine art in its own right.`,
+  // Visual – Printmaking
+  'woodblock': `Carving a design into a block of wood, inking it, and pressing paper against it. Woodblock printing's history runs from 8th-century China through Dürer's technical mastery and into the bold, flat aesthetic of Japanese ukiyo-e prints.`,
+  'etching': `Covering a metal plate in wax, drawing through it, and exposing it to acid that bites the lines. Etching's ability to produce delicate crosshatching and atmospheric tone made it Rembrandt's preferred medium for many of his greatest works.`,
+  'lithography': `Printing from a flat stone or metal plate using the mutual repulsion of oil and water. Lithography allowed unprecedented tonal subtlety and was the medium of Toulouse-Lautrec's posters and Daumier's political caricatures.`,
+  'silkscreen': `Forcing ink through a mesh screen where areas have been masked — the technique Warhol used for his silkscreened celebrities. Screen printing is simultaneously an industrial process and a versatile fine art medium.`,
+  'linocut': `Carving a design into linoleum and printing from it — a printmaking method accessible enough for schools, versatile enough for major artists. Matisse made late linocuts; Diego Rivera and others used the technique for bold political prints.`,
+  'mezzotint': `A printmaking technique that begins with a roughened plate (which would print solid black) and works back toward light by burnishing the surface. Mezzotint's velvety tonal range made it the premier medium for reproductive prints before photography.`,
+  'digital-print': `Inkjet printing from digital files, often with archival pigment inks (giclée). Digital printing has democratized the production of high-quality editions and opened up rich mixed digital-traditional practice for contemporary artists.`,
+  // Visual – Sculpture
+  'carving': `Cutting material away to reveal the form within — stone, wood, bone, or ivory. Carving requires imagining the finished work within the unworked block; Michelangelo spoke of liberating the figure trapped inside the marble.`,
+  'modelling': `Building a form from a pliable material — clay, wax, or plaster — by adding and subtracting. Modelling is the most direct and gestural approach to sculpture; Rodin's rough surfaces preserve the energy of the original making process.`,
+  'casting': `Creating a mold from a model and pouring molten bronze — or other material — into it. Bronze casting has preserved the world's greatest sculpture for millennia; the process involves wax, ceramic shells, and furnace heat.`,
+  'welding-sculpt': `Building sculpture by joining metal pieces with heat — from found objects to precision-cut steel. David Smith's Cubis and Richard Serra's enormous weathering-steel walls demonstrate the enormous range this approach allows.`,
+  'kinetic-sculpt': `Sculpture that moves, powered by wind, motors, or viewer interaction. Alexander Calder's mobiles introduced kinetic art to the mainstream; subsequent artists have integrated complex technology, fluid mechanics, and engineering.`,
+  'installation-art': `Art that transforms a space rather than existing as a discrete object. Installation invites the viewer inside the work itself; artists from Donald Judd to Yayoi Kusama to Olafur Eliasson have created entire immersive environments.`,
+  'site-specific': `Art made for and inseparable from a particular location, often outdoors. Richard Serra's Tilted Arc, Christo's wrapped landmarks, and Robert Smithson's Spiral Jetty exist in an active, dynamic relationship with their sites.`,
+  'ice-sand': `Sculpture in impermanent materials — ice, sand, snow, leaves — that will melt, erode, or blow away. Ephemeral sculpture embraces transience as its subject; the photograph becomes the work's permanent record.`,
+  // Visual – Photography
+  'documentary-photo': `Photography that bears witness to the world — conflicts, communities, injustice, and everyday life. From Dorothea Lange's Great Depression images to James Nachtwey's war photography, documentary practice has shaped how we understand history.`,
+  'portrait-photo': `Photography centered on the human face and person. From formal 19th-century studio portraits to Richard Avedon's stark white-background studies, portrait photography explores identity, power, and the nature of the photographic gaze.`,
+  'landscape-photo': `Photography of natural and built environments, engaging questions of beauty, environmental change, and humanity's relationship with place. Ansel Adams's monumental prints and Stephen Shore's deadpan color work define very different traditions.`,
+  'street-photo': `Candid photography in public spaces, capturing life as it unfolds. Henri Cartier-Bresson's "decisive moment" and Vivian Maier's posthumously discovered archive represent the tradition's range from formal mastery to obsessive personal vision.`,
+  'fine-art-photo': `Photography conceived and exhibited as fine art, pursuing aesthetic and conceptual goals rather than documentation. Cindy Sherman, Andreas Gursky, and Wolfgang Tillmans represent very different visions of what photography can be as art.`,
+  'experimental-photo': `Photography that investigates the medium itself — through darkroom chemistry, photograms, or alternative processes. Man Ray's rayographs and contemporary lumen prints explore photography's possibilities beyond the camera and conventional darkroom.`,
+  'astro-photo': `Photography of astronomical objects — planets, nebulae, galaxies, and star fields. Astrophotography reveals the invisible universe and has produced some of the most beautiful and awe-inspiring images in human history.`,
+  // Visual – Textile
+  'weaving': `Interlacing threads on a loom to create cloth or tapestry. Weaving is one of humanity's oldest technologies; tapestry weaving has been used for monumental pictorial works from medieval Brussels to contemporary fiber art.`,
+  'embroidery': `Decorating fabric with needle and thread, with traditions spanning every culture. From the Bayeux Tapestry to Chinese silk embroidery to contemporary conceptual fiber art, embroidery ranges from folk craft to serious fine art.`,
+  'quilting': `Sewing together layers of fabric with decorative patterning on the surface layer. American quilting traditions encode stories and community history; quilt-making became politically significant through the AIDS Memorial Quilt.`,
+  'knitting-crochet': `Creating fabric by interlocking loops of yarn with needles or a hook. Both crafts have deep folk traditions and have been reclaimed by contemporary artists and designers as serious artistic media.`,
+  'lacemaking': `Creating delicate, openwork fabric by knotting, looping, or twisting threads. Traditional lacemaking — bobbin lace, needle lace — requires extraordinary patience and skill; it was once one of the most valuable luxury commodities in Europe.`,
+  'batik': `Creating patterns on fabric by applying wax to resist dye. Javanese batik has sophisticated symbolic vocabularies; the technique has been adopted worldwide as both traditional craft and contemporary art medium.`,
+  'feltmaking': `Creating non-woven fabric from wool fibers matted together through heat, moisture, and pressure. Felt is one of the oldest textiles; contemporary felt artists have pushed the material into three-dimensional sculptural forms.`,
+  'fiber-art': `Contemporary art practice using fiber, thread, and textile materials as fine art media. Artists like Sheila Hicks and Nick Cave have pushed fiber into gallery contexts with major conceptual ambitions, transcending the craft/fine art divide.`,
+  // Visual – Mosaic/glass/ceramics
+  'mosaic': `Images assembled from small pieces of colored stone, glass, or tile. Byzantine church mosaics are the supreme Western examples; the shimmering quality of tesserae creates a spiritual luminosity no other medium achieves.`,
+  'stained-glass': `Colored glass assembled into pictorial or abstract windows, held together with lead. Medieval cathedral windows are among the most ambitious artistic achievements ever undertaken; contemporary artists like Gerhard Richter have reinvented the medium.`,
+  'blown-glass': `Shaping molten glass by blowing air through a metal tube and manipulating the form. Glass must be worked quickly in the brief window when it is viscous; the results have distinctive surface characteristics and inner luminosity.`,
+  'pottery': `Shaping clay and firing it to create permanent ceramic objects. Pottery is one of humanity's oldest art forms; Japanese tea bowl aesthetics, Chinese porcelain technique, and contemporary ceramic art represent very different chapters of a single long story.`,
+  'porcelain': `Decorating fired porcelain with mineral pigments that fuse with the glaze in a second firing. Chinese blue-and-white porcelain and European painted Meissen and Sèvres represent pinnacles of a tradition that bridged craft and aristocratic luxury.`,
+  'enamel': `Fusing powdered glass onto metal through heat, creating richly colored, permanent surfaces. Cloisonné uses wire partitions to separate colors; champlevé carves channels into the metal. Both traditions produced magnificent medieval reliquaries and Byzantine objects.`,
+  // Visual – Street art
+  'mural': `Large-scale painting on walls, buildings, or public surfaces. The Mexican muralist tradition — Rivera, Orozco, Siqueiros — established mural painting as political public art; contemporary muralists work from commissioned beautification to unauthorized commentary.`,
+  'graffiti': `Writing and imagery applied to public surfaces without permission, originating in New York subway culture. Graffiti encompasses tagging (personal signature), wildstyle lettering, and large-scale pieces — and has moved from criminal act to gallery commodity.`,
+  'paste-up': `Large-scale printed or drawn images wheatpasted to public surfaces. Paste-up allows more complex preparation than spray paint and has been used by artists like Shepard Fairey and Swoon for intricate, multilayered public images.`,
+  'yarn-bomb': `Covering public objects — lamp posts, trees, benches, statues — in colorful knitted or crocheted coverings. Yarn bombing transforms the urban environment through softness and color, typically without the negative associations of spray-paint graffiti.`,
+  'public-sculpture': `Three-dimensional art placed in public spaces for the community to encounter without seeking it out. Public sculpture ranges from heroic monuments to abstract forms to participatory works, creating constant dialogue between art and everyday life.`,
+  // Performing – Theatre
+  'tragedy': `Drama ending in catastrophe, typically centered on a protagonist brought low by fate, character flaw, or both. Greek tragedy (Sophocles, Aeschylus, Euripides) and Shakespeare's tragedies remain the foundational texts of Western theatre.`,
+  'comedy-theatre': `Drama that seeks to amuse through misunderstanding, wit, subversion, and the eventual triumph of ordinary human desires. Comedy's range — from Aristophanes' political satire to Molière's social critique to Noel Coward's sparkling wit — is as vast as tragedy's.`,
+  'tragicomedy': `Drama that mixes tragic and comic elements, refusing the clean catharsis of either. Chekhov's plays are the great modern examples — characters face devastating circumstances while behaving with absurd specificity; Beckett's Waiting for Godot is the extreme version.`,
+  'melodrama': `Drama built on exaggerated emotion, clear moral stakes, and often sensational plot. Melodrama is the genetic ancestor of most popular entertainment — film, soap opera, thriller — though the word has come to mean "overdone."`,
+  'absurdist': `Theatre that represents the fundamental meaninglessness of existence through broken logic, repetitive action, and stripped-down language. Beckett, Ionesco, and Pinter created a form that is philosophically serious and often blackly comic.`,
+  'epic-theatre': `Bertolt Brecht's theory and practice of theatre that aims to provoke critical thinking rather than emotional identification. Epic theatre's techniques — direct address, visible staging, songs that interrupt narrative — make audiences think, not just feel.`,
+  'devised': `Theatre created collaboratively by an ensemble without a pre-existing script. Devised theatre emphasizes collective authorship and often integrates physical, visual, and musical elements; companies like Complicité have pushed this tradition into major international work.`,
+  'immersive-theatre': `Theatre in which audiences move through the performance space and encounter scenes rather than watching from seats. Punchdrunk's Sleep No More — set in a transformed New York hotel, based on Macbeth — is the canonical example of the form.`,
+  'verbatim': `Theatre created from interviews and documentary sources, with actors speaking the exact words of real people. Verbatim theatre places journalism and testimony on stage, raising questions about representation, accuracy, and whose stories get told.`,
+  'commedia': `A form of improvisational masked comedy originating in 16th-century Italy, with a fixed cast of stock characters — Harlequin, Columbine, Pantalone. Commedia dell'arte shaped European comedy for centuries and continues to influence clown and physical theatre.`,
+  // Performing – Musical theatre
+  'musical': `A theatrical form combining song, dialogue, and dance to tell a story. The Broadway musical developed through the 20th century from operetta through Rodgers and Hammerstein's integrated form to Sondheim's complexity to contemporary spectacle.`,
+  'operetta': `Light opera combining spoken dialogue with sung musical numbers, typically comic or romantic in tone. Viennese operetta (Lehár's Merry Widow) and Gilbert and Sullivan's Savoy operas defined the genre that directly preceded the Broadway musical.`,
+  'revue': `A theatrical entertainment consisting of sketches, songs, and dance without a continuous storyline. Revue and cabaret flourished in Weimar Berlin and interwar Paris, often with explicitly political and satirical content.`,
+  'jukebox-musical': `A musical built around pre-existing popular songs, typically from a single artist or era. From Mamma Mia! (ABBA) to Jersey Boys (Four Seasons), jukebox musicals leverage audience nostalgia while posing significant narrative construction challenges.`,
+  'dance-musical': `Musicals in which dance is the primary dramatic language rather than an ornament between scenes. Jerome Robbins's West Side Story and Bob Fosse's Chicago made choreography the central expressive medium of the form.`,
+  // Performing – Dance (Concert)
+  'ballet': `A highly technical form of theatrical dance using a codified vocabulary of steps developed in the European court and codified in 19th-century Russian Imperial theatre. The Romantic ballets — Giselle, Swan Lake — remain the form's emotional and technical core.`,
+  'contemp-dance': `Dance practice that rejects ballet's technical canon in favor of a wide range of movement approaches. Contemporary dance absorbs somatic practices, improvisation, pedestrian movement, and interdisciplinary collaboration.`,
+  'modern-dance': `The early 20th-century rebellion against ballet, pioneered by Isadora Duncan, Martha Graham, and Doris Humphrey. Modern dance insisted that movement should express authentic human emotion rather than display technical virtuosity.`,
+  'post-modern-dance': `The 1960s Judson Dance Theater reaction against even modern dance's expressivity, arguing that any movement could be dance. Yvonne Rainer, Trisha Brown, and Steve Paxton made walking, standing, and task-performance into choreography.`,
+  'butoh': `A Japanese performance form that emerged in the 1950s as a rejection of both Western dance and traditional Japanese forms. Butoh often features extreme slowness, distorted bodies, white-painted skin, and themes of mortality and transformation.`,
+  'physical-theatre': `Performance that prioritizes the body as the primary expressive medium, blurring the line between dance and theatre. Companies like DV8 and Complicité make work in which physical risk and extreme corporeal expression carry dramatic meaning.`,
+  // Performing – Dance (Social)
+  'ballroom': `Partnered dancing in formalized styles — waltz, foxtrot, tango, quickstep, and Latin dances — performed in competition or socially. Ballroom dance's elaborate scoring systems and competitive culture coexist with its origins as social pleasure.`,
+  'swing-dance': `Partner dances that developed alongside jazz in the 1920s–1940s, including Lindy Hop, Charleston, and East Coast Swing. Swing dancing's global revival since the 1980s has created communities devoted to preserving and evolving these forms.`,
+  'tango': `A partnered social and concert dance from the Río de la Plata region, and its associated music. Argentine tango is improvised, intimate, and built on an intricate physical conversation between partners; its sophistication has made it a global art form.`,
+  'salsa': `A partnered social dance originating in New York's Latin communities, drawing on Cuban son, mambo, and Puerto Rican influences. Salsa and mambo are danced at social events worldwide and have developed a rich competitive and performance scene.`,
+  'folk-dance': `Traditional communal dances tied to seasonal, ritual, and social occasions. From English Morris dancing to Greek circle dances to Ukrainian hopak, folk dance preserves community identity and has been revived in many diaspora contexts.`,
+  // Performing – Dance (Street)
+  'breakdancing': `A style of street dance originating in the Bronx in the early 1970s, one of hip-hop's founding elements. Breaking combines acrobatics, freezes, power moves, and floor work into a form of competitive self-expression now recognized as an Olympic sport.`,
+  'waacking': `A dance style originating in the LA gay bar scene of the 1970s, characterized by dramatic arm movements and sharp poses inspired by cinema. Voguing, closely related, emerged from New York's Black and Latino ballroom scene.`,
+  'popping': `A funk-derived street dance style characterized by sudden contractions and releases of the muscles to create a "pop" effect. Locking is a related style from the same era; both emerged directly from James Brown's influence on popular dance.`,
+  'house-dance': `A form of social and street dance born in Chicago and New York house music clubs in the 1980s. House dance's fluid footwork, rhythmic freedom, and improvisational quality reflect the music's roots in Black and queer club culture.`,
+  'krump': `A high-energy Los Angeles street dance characterized by large, expressive movements — chest pops, stomps, and exaggerated arm swings. Krump originated in South Central LA as a positive outlet for young people and carries a spiritual, communal dimension.`,
+  // Performing – Dance (Traditional)
+  'bharatanatyam': `The classical dance tradition of Tamil Nadu, South India — one of the oldest codified dance forms in the world. Bharatanatyam combines precise footwork, intricate hand gestures (mudras), and facial expression to depict mythological narratives.`,
+  'noh-kyogen': `Two Japanese theatrical forms that developed together in the 14th century. Noh is slow, masked, and profoundly meditative; Kyogen is its comic counterpart, providing relief between Noh plays with wordplay and physical comedy.`,
+  'chinese-dance': `China's classical dance traditions, rooted in court performance, opera, and folk practices. Chinese classical dance is characterized by the long silk sleeves that extend movement, fluid waist work, and elaborate narrative gesture.`,
+  'flamenco': `A performance art from Andalusia combining song (cante), dance (baile), and guitar (toque). Flamenco's emotional intensity — duende, the ineffable quality of true feeling — is considered its deepest value; it cannot be faked.`,
+  'hula': `The traditional dance of Native Hawaiians, carrying spiritual, historical, and ecological knowledge in its movement and chant. Hula was suppressed by missionaries but survived; its revival is central to Hawaiian cultural identity.`,
+  'kathak': `A classical dance form from North India, shaped by both Hindu temple dance and Mughal court aesthetics. Kathak is characterized by fast footwork, spinning pirouettes, and complex rhythmic interplay between dancer and tabla player.`,
+  'cossack-dance': `The acrobatic folk dances of Ukrainian and broader Eastern European Cossack traditions. The hopak, with its leaping and squatting virtuosity, has become a symbol of Ukrainian national identity and martial vigor.`,
+  // Performing – Circus
+  'acrobatics': `The art of gymnastic feats — balancing, tumbling, and contortion — in performance. Acrobatics is ancient (depicted in Egyptian wall paintings); contemporary forms range from traditional Chinese acrobatics to contemporary physical theatre.`,
+  'trapeze': `Aerial performance on a suspended bar, either swinging (flying trapeze) or static. The flying trapeze act — flyer, catcher, split-second timing — is one of performance's most spectacular displays of trust and physical precision.`,
+  'juggling': `The manipulation of objects — balls, clubs, rings, or knives — in the air. Juggling has a long history in circus and street performance; contemporary juggling has developed into a technically sophisticated art form with its own competitions.`,
+  'tight-rope': `Walking on a wire stretched above the ground, sometimes at extreme height. High-wire artists like Philippe Petit — who walked between the Twin Towers in 1974 — have turned the form into a contemplation of courage, balance, and mortality.`,
+  'clown': `A performance tradition built on physical comedy, deliberate failure, and emotional vulnerability. Far from its commercial form, the art of clowning descends from commedia dell'arte and demands total commitment and genuine contact with the audience.`,
+  'contortion': `Extreme flexibility and body positioning pushed far beyond normal range. Contortion appears in circus, ballet, and contemporary physical theatre; it is particularly associated with Chinese and Mongolian performance traditions.`,
+  'magic': `Stage magic creates the experience of the impossible through skill, deception, and theatrical presentation. Houdini transformed the art form with his escape act; contemporary magicians like Penn & Teller combine magic with comedy and social commentary.`,
+  'parkour-art': `Movement through urban environments using running, jumping, vaulting, and climbing — practiced as a fluid, expressive art form. When conceived aesthetically rather than just practically, parkour becomes a choreography of the city.`,
+  // Performing – Puppetry
+  'marionette': `Puppets controlled by strings from above, requiring the puppeteer to inhabit the figure's movement while remaining invisible. Marionette traditions range from European folk theatre to the sophisticated Salzburg Marionettes performing full operas.`,
+  'hand-puppet': `Puppets worn on the hand, controlled by fingers placed inside the figure. The Punch and Judy tradition brings anarchic social commentary to the street; hand puppetry is also central to children's theatre worldwide.`,
+  'shadow-puppet': `Figures whose shadows are projected on a screen, controlled by rods or strings. Shadow puppet traditions are ancient and sophisticated — Wayang Kulit in Indonesia, Karagöz in Turkey — and have influenced contemporary artists and filmmakers.`,
+  'bunraku': `Japanese puppet theatre using large, complex puppets operated by three visible puppeteers per figure. Bunraku developed alongside kabuki in the Edo period and is recognized by UNESCO as Intangible Cultural Heritage.`,
+  'rod-puppet': `Puppets controlled by rods attached to the figure, allowing great precision and expressiveness of movement. Traditional rod puppet traditions in China and India are ancient and technically sophisticated; the Muppets are a celebrated modern form.`,
+  'object-theatre': `Performance in which everyday objects — household items, found materials — are animated and treated as characters. Object theatre blurs the boundary between puppetry and installation, asking what it means for an object to have a presence.`,
+  // Performing – Stand-up
+  'stand-up-comedy': `A single performer, a microphone, and an audience — the most stripped-down of performance forms. Great stand-up comedy is simultaneously personal and universal, using laughter to approach subjects that no other form can touch.`,
+  'storytelling-perf': `The live art of telling stories to a present audience. From The Moth's confessional personal narratives to professional storytellers working in oral tradition, storytelling performance honors the most ancient form of human communication.`,
+  'spoken-word-perf': `Performance that foregrounds language — poetry, monologue, and text-based art delivered live. Spoken word exists at the intersection of theatre and poetry; its practitioners include slam poets, essayists, and theatre-makers.`,
+  'improv': `Performance created entirely in the moment, without script or prior planning. Improv's principle — "Yes, and" — is a philosophy as much as a technique; the form generated Saturday Night Live, the Groundlings, and much of contemporary comedy culture.`,
+  'sketch': `Pre-written, rehearsed comic scenarios — the format of Monty Python, Saturday Night Live, and Key & Peele. Great sketch comedy creates recognizable characters and situations and then pushes them to their absurd logical extreme.`,
+  'lecture-performance': `A form that adopts the structure of an academic lecture while subverting it for artistic purposes. Artists like Walid Raad and Andrea Fraser use the lecture format to examine how institutions shape knowledge and what can be said.`,
+  // Performing – Performance art
+  'happenings': `Unscripted, often participatory events created by Allan Kaprow and others in the late 1950s and 1960s. Happenings blurred the line between art and life, insisting that everyday actions could be aesthetic acts.`,
+  'fluxus': `An international movement that merged Dada, Cagean chance procedures, and anti-art provocation into event scores and performances. George Maciunas, Yoko Ono, and Nam June Paik created work that questioned art's institutional definitions.`,
+  'body-art': `Performance in which the artist's own body is the primary material and medium. Vito Acconci, Marina Abramović, and Chris Burden subjected their bodies to endurance, vulnerability, and risk to explore identity, power, and presence.`,
+  'endurance-art': `Performance characterized by extended duration — hours, days, or longer. Marina Abramović's The Artist Is Present (736 hours of silent confrontation) represents the extreme case; endurance art tests both artist and audience.`,
+  'relational-aesthetics': `An art practice defined by creating social situations and human encounters rather than objects. Theorized by Nicolas Bourriaud in 1998, it describes artists like Rirkrit Tiravanija who cooks meals in galleries — art as social interaction.`,
+  // Performing – Opera types
+  'opera-seria': `18th-century formal opera in the Italian tradition, featuring heroic subjects, elaborate vocal display, and a strict separation of recitative (dialogue) and aria (reflection). Handel's London operas are the most frequently revived examples today.`,
+  'opera-buffa': `Comic opera in Italian — a genre that balanced witty librettos with musical sophistication. Mozart's Don Giovanni and The Marriage of Figaro remain the masterpieces of a form that influenced all subsequent comic opera.`,
+  'bel-canto': `Literally "beautiful singing" — a style characterized by smooth legato tone, ornamental display, and vocal agility. Bellini and Donizetti wrote for this style; the bel canto revival of the 1950s produced Callas and Sutherland.`,
+  'verismo': `Late 19th and early 20th-century Italian opera that embraced realistic, lower-class subjects and intense emotional expression. Puccini, Mascagni's Cavalleria rusticana, and Leoncavallo's Pagliacci represent the style.`,
+  'wagner-opera': `Richard Wagner's revolutionary "music dramas" that abandoned the aria-and-recitative structure in favor of continuous through-composed music and leitmotifs. The Ring Cycle remains the most ambitious single project in Western music history.`,
+  'modern-opera': `Opera composed after World War II — from Britten's lyrical works to Philip Glass's minimalist Einstein on the Beach to contemporary multimedia productions. 21st-century opera is one of the most creatively alive areas of classical music.`,
+  'chinese-opera': `Jingju (Peking opera) is the most prominent of dozens of Chinese opera traditions, combining acrobatics, elaborate costumes, and stylized singing. Its four role types (sheng, dan, jing, chou) each have distinct vocal and physical vocabularies.`,
+  'noh': `Japan's oldest surviving theatrical form, developed in the 14th century and one of the world's great artistic traditions. Noh's extreme slowness, masked performances, and classical poetry create an aesthetic of yearning and the presence of ghosts.`,
+  // Film – Narrative
+  'drama': `The broadest category of narrative film — stories of human experience, conflict, and consequence without genre overlay. The history of prestige cinema is largely the history of drama; it is where acting, writing, and direction most often converge.`,
+  'comedy-film': `Films designed to provoke laughter, from slapstick to screwball to dark comedy. Chaplin and Keaton invented the language of screen comedy; the screwball comedies of the 1930s represent perhaps Hollywood's greatest sustained achievement.`,
+  'thriller': `Films that create and sustain tension through danger, deception, and the threat of violence. Hitchcock defined the form; contemporary thrillers range from psychological chamber pieces to sprawling global conspiracy narratives.`,
+  'horror-film': `Cinema that provokes fear, dread, and the confrontation with death. Horror is one of the oldest and most theorized of film genres; its greatest works — Nosferatu, The Shining, Get Out — use fear to examine deep cultural anxieties.`,
+  'sci-fi': `Cinema that uses speculative technology and future or alien settings to examine human questions. 2001, Blade Runner, and Children of Men represent science fiction at its most philosophically serious; the genre spans from space opera to intimate near-future drama.`,
+  'fantasy-film': `Cinema set in worlds where magic and the impossible operate as real forces. Fantasy film ranges from the European fairy-tale tradition to Hollywood blockbusters; its greatest practitioners — Miyazaki, del Toro — use the genre for profound imaginative vision.`,
+  'western': `A genre defined by the American frontier — vast landscapes, moral clarity, and violence as a solution to social problems. From John Ford to Sergio Leone to contemporary revisions, the western is one of cinema's richest mythological systems.`,
+  'war-film': `Films concerned with armed conflict — its heroism, horror, camaraderie, and waste. All Quiet on the Western Front, Apocalypse Now, and The Thin Red Line represent very different moral orientations toward the subject of war.`,
+  'romance-film': `Films centered on love stories and their obstacles. Hollywood's classical romance — from Casablanca to When Harry Met Sally — has been complicated by modern romantic comedies and films that interrogate romance as a social form.`,
+  'musical-film': `Films in which characters burst into song and dance as a natural extension of narrative and emotion. The MGM musicals of the 1940s and 50s represent the form at its most exuberant; La La Land and recent adaptations have revived it.`,
+  'biopic': `Films that dramatize the lives of real people. The biopic must balance factual responsibility with dramatic necessity; at its worst it is hagiography, at its best — I, Tonya; Capote — it meditates on how stories about lives are constructed.`,
+  // Film – Documentary
+  'observational': `Documentary that minimizes the filmmaker's presence, letting events unfold as if unobserved. Frederick Wiseman's long, unnarrated institutional studies are the extreme case of this approach.`,
+  'expository': `Documentary that uses narration and talking-head interviews to make an argument about the world. The authoritative narrator became standard in mid-20th-century documentary and remains the dominant mode in television documentary.`,
+  'participatory': `Documentary in which the filmmaker is visible and active — interviewing subjects, inserting themselves into events. Michael Moore and Nick Broomfield make participatory films that foreground the filmmaker's subjective engagement.`,
+  'essay-film': `A hybrid form in which personal reflection, archival material, and observation combine in a literary, essayistic structure. Chris Marker's Sans Soleil is foundational; the essay film treats cinema as a medium for thinking, not just showing.`,
+  'mockumentary': `Fiction film made in documentary style, exploiting the audience's trust in documentary conventions. This Is Spinal Tap, The Office, and Borat use the form to satirize their subjects while raising questions about documentary truth itself.`,
+  'nature-doc': `Documentary focused on the natural world — animals, ecosystems, and ecological processes. David Attenborough and the BBC Natural History Unit have created a canon of nature filmmaking that is simultaneously scientific documentation and cinematic art.`,
+  'true-crime': `Documentary focused on real crimes, criminals, and the justice system. Serial, Making a Murderer, and The Act of Killing represent very different approaches; at its best the genre examines the social conditions that produce crime.`,
+  // Film – Experimental
+  'avant-garde-film': `Cinema that rejects narrative conventions, using film as a medium for pure visual and temporal exploration. Maya Deren's trance films, Stan Brakhage's hand-painted celluloid, and Kenneth Anger's mythological imagery define an alternative film canon.`,
+  'structuralist-film': `Films organized around material and formal properties of cinema itself — the filmstrip, the frame, duration. Michael Snow's Wavelength (a 45-minute zoom shot) and Andy Warhol's Empire explore what film is before it tells a story.`,
+  'video-art': `Art made with video technology, developed from the 1960s when portable cameras became accessible to artists. Nam June Paik, Joan Jonas, and Bill Viola pioneered a medium that now encompasses installation, single-channel video, and screen-based art.`,
+  'found-footage-film': `Films constructed entirely or primarily from pre-existing footage — newsreels, home movies, industrial films. Found footage art reframes existing material, revealing new meanings through editing, juxtaposition, and changed context.`,
+  'expanded-cinema': `Film practice that extends beyond the single screen — multi-screen projection, performance, installation, and live elements. Stan VanDerBeek and contemporary artists like Jennifer Reeves blur the boundary between cinema and gallery art.`,
+  // Film – Animation
+  'traditional-anim': `Animation created frame-by-frame on cels — the technique of Disney's Snow White and the Fleischer Brothers' Betty Boop. Traditional cel animation is largely obsolete industrially but remains practiced for its distinctive fluid beauty.`,
+  'stop-motion': `Animation created by photographing physical objects one frame at a time, moving them incrementally. Stop motion gives objects presence and tactility; the films of Jan Švankmajer, Aardman, and Henry Selick have distinct sensibilities impossible in any other medium.`,
+  'claymation': `A subset of stop motion using clay or similar malleable materials, allowing characters to deform and transform. Will Vinton's Claymation and Nick Park's Wallace and Gromit are celebrated examples of the form's distinctive comic potential.`,
+  '2d-digital': `Animation using digital tools to create the equivalent of traditional hand-drawn animation. Studios like Cartoon Saloon maintain a commitment to 2D aesthetics with digital efficiency, producing work of great beauty and craft.`,
+  '3d-cgi': `Animation created by manipulating three-dimensional computer models in virtual space. Pixar's Toy Story (1995) launched the age of CGI feature animation; the medium now dominates commercial animation worldwide.`,
+  'motion-graphics': `Animated text and graphic elements, typically for titles, advertising, and information design. Saul Bass's film titles elevated motion graphics to an art form; today's motion designers work across broadcast, digital, and installation contexts.`,
+  'anime': `Japanese animation with distinctive visual styles, typically featuring expressive characters, detailed backgrounds, and genres from children's fantasy to adult drama. Studio Ghibli (Miyazaki), Satoshi Kon, and Makoto Shinkai represent anime's artistic heights.`,
+  'rotoscope': `Animation technique in which animators trace over live-action footage, frame by frame. Rotoscoping creates a distinctive uncanny quality — realistic yet clearly animated; Ralph Bakshi and the music video for A-ha's "Take On Me" are famous examples.`,
+  // Film – Short
+  'short-film': `Films under about 40 minutes — the format in which filmmakers often begin and in which narrative and experimental traditions overlap most fluidly. Short films must achieve their effects with great economy; the form has launched many major careers.`,
+  'music-video': `Short film created to accompany and promote a musical recording. The music video was transformed by MTV in the 1980s; directors like Michel Gondry, Spike Jonze, and Anton Corbijn used the format to make genuinely innovative cinema.`,
+  'commercial': `Advertising produced for broadcast or digital media. The best television commercials — Ridley Scott's 1984 Apple ad, classic Guinness campaigns — are short films in their own right; commercial directing has launched major cinema careers.`,
+  'web-series': `Episodic video content created for online distribution. Web series have enabled creators outside the studio system to find audiences; the format ranges from quick comedy sketches to sophisticated narrative series.`,
+  // Literature – Fiction
+  'novel': `An extended prose fiction narrative — the dominant literary form of the past 250 years. The novel's capacity for psychological depth, social panorama, and temporal complexity has made it the form in which modernity has primarily understood itself.`,
+  'novella': `A prose fiction work between a short story and a novel in length — typically 20,000 to 40,000 words. The novella's compressed scope forces intense focus; Kafka's Metamorphosis, Mann's Death in Venice, and Conrad's Heart of Darkness are among its greatest examples.`,
+  'short-story': `A brief prose fiction work typically read in a single sitting. The short story demands extraordinary economy; Chekhov, Carver, and Flannery O'Connor raised the form to the level of the novel by using compression as a formal principle.`,
+  'flash-fiction': `Very short fiction — typically under 1,000 words — that must establish character, situation, and resonance in minimal space. Flash fiction rewards precision; its proximity to the prose poem is close and generative.`,
+  'genre-fiction': `Fiction organized around the conventions of recognizable genres — mystery, romance, science fiction, fantasy, horror. Genre fiction outsells literary fiction enormously; its best practitioners (Le Guin, Toni Morrison, Philip Pullman) transcend the genre/literary distinction.`,
+  'literary-fiction': `Fiction that prioritizes aesthetic complexity, psychological depth, and stylistic innovation over plot and genre conventions. Literary fiction since Joyce and Woolf has continually reinvented what the novel can do.`,
+  'historical-fiction': `Fiction set in the past, typically with a fidelity to historical circumstances. Hilary Mantel's Wolf Hall trilogy and Colson Whitehead's The Underground Railroad show how historical fiction illuminates the present by reimagining the past.`,
+  'magical-realism': `Fiction in which magical or impossible elements occur in an otherwise realistic world, treated as ordinary. Garcia Márquez's One Hundred Years of Solitude is canonical; magical realism has roots in Latin America and has spread to writers worldwide.`,
+  'autofiction': `Fiction that blurs the boundary between autobiography and invention, with an author-like narrator experiencing events that may or may not have happened. Karl Ove Knausgård's My Struggle is the most extreme recent example of the form.`,
+  // Literature – Nonfiction
+  'essay': `A short prose work exploring a subject through personal observation, argument, and association. Montaigne invented the form; its descendants range from Bacon's formal essays to Woolf's fluid personal reflections to contemporary braided essays.`,
+  'memoir': `A nonfiction narrative focusing on a portion of the writer's life, shaped into a story rather than a comprehensive autobiography. Nabokov's Speak, Memory and Mary Karr's The Liar's Club are benchmark examples of the form at its best.`,
+  'biography': `A nonfiction narrative of another person's life, based on research and interviews. Biography navigates the tension between factual responsibility and narrative readability; Robert Caro's multi-volume life of LBJ is the most admired example in recent American letters.`,
+  'narrative-nonfiction': `Nonfiction written with the techniques of fiction — scene, dialogue, characterization — applied to factual subjects. John McPhee, Joan Didion, and Tracy Kidder established the form in American journalism; it is now one of the most widely practiced literary modes.`,
+  'criticism': `Writing that analyzes, evaluates, and interprets art. Literary and art criticism ranges from newspaper reviewing to long-form academic analysis; the best criticism — Sontag, Berger, Didion — is itself an art form that deepens experience.`,
+  'nature-writing': `Nonfiction at the intersection of natural history, ecology, and personal reflection. Thoreau's Walden launched American nature writing; Annie Dillard, Barry Lopez, and Robert Macfarlane have expanded its emotional and political range.`,
+  'travel-writing': `Nonfiction that uses the experience of travel to reflect on culture, identity, and encounter. From Herodotus through Ryszard Kapuściński to Pico Iyer, travel writing is always partly about the traveler's assumptions and their disintegration.`,
+  'food-writing': `Nonfiction that uses food as a lens for culture, memory, and identity. M.F.K. Fisher established the form's literary credentials; contemporary food writing encompasses restaurant criticism, food systems journalism, and personal memoir.`,
+  'sports-writing': `Nonfiction that takes sport seriously as a cultural and human phenomenon. Gay Talese, David Halberstam, and Roger Angell demonstrated that sports writing could be as formally ambitious and socially revealing as any other literary journalism.`,
+  // Literature – Dramatic
+  'play-script': `The written text of a theatre work — dialogue, stage directions, and dramatic structure that become a performance. Great play scripts (Shakespeare, Chekhov, Beckett) are literary works read in their own right; others are blueprints requiring performance.`,
+  'radio-play': `Drama written specifically for the radio medium — relying entirely on voice, sound, and silence. The BBC Radio Drama tradition produced work by Beckett, Dylan Thomas, and Stoppard; the medium has been revived in the podcast era.`,
+  'screenplay': `The script for a film — a highly specialized form with strict conventions. The screenplay describes action, dialogue, and scenes for industrial production; it is an instruction set rather than a literary object, though exceptional screenwriters transcend this.`,
+  'teleplay': `A script written for television — adapted to the demands of the medium (act breaks, episode length, series continuity). Television writers' rooms have produced some of the most sophisticated dramatic writing of the past few decades.`,
+  'libretto': `The text of an opera or musical — the words sung and spoken in performance. Librettos by Da Ponte (for Mozart), Hugo von Hofmannsthal (for Richard Strauss), and Sondheim are literary works that have been transformed and amplified by their music.`,
+  // Literature – Oral
+  'myth-legend': `Stories of gods, heroes, and origins that explain the world and human experience. Every culture has mythological traditions; Greek, Norse, Hindu, African, and Indigenous American mythologies are among the most extensively documented.`,
+  'fairy-tale': `Short narratives typically featuring magic, transformation, and moral testing. The fairy tale tradition was collected and shaped by Perrault, the Brothers Grimm, and Andersen; in literary and film form it has generated endless retellings and revisions.`,
+  'epic-trad': `Long oral narrative poems celebrating heroes and founding events, transmitted across generations before being written down. Homer's epics, the Mahabharata, the Epic of Gilgamesh, and the Finnish Kalevala represent different chapters of this worldwide form.`,
+  'fable': `A short narrative in which characters — often animals — illustrate a moral lesson. Aesop's fables and La Fontaine's verse fables are the canonical Western examples; every culture has parallel traditions of the form.`,
+  'trickster-story': `Stories featuring trickster figures — Coyote in Indigenous American traditions, Anansi in West African storytelling, Loki in Norse mythology — who subvert order through cunning. Trickster figures are among humanity's oldest and most widespread narrative archetypes.`,
+  // Literature – Hybrid
+  'graphic-novel': `Long-form comics narrative, typically read as a book rather than a serial. Spiegelman's Maus demonstrated the graphic novel's capacity for serious literary subject matter; Chris Ware, Alison Bechdel, and Craig Thompson have expanded its formal range.`,
+  'lyric-essay': `A hybrid form combining the personal reflection of the essay with the compression and imagery of lyric poetry. The lyric essay moves by association rather than argument; its writers include Maggie Nelson, Claudia Rankine, and Anne Carson.`,
+  'found-text': `Writing constructed from pre-existing texts — newspapers, instruction manuals, found documents — reassembled into new works. Found text writing questions authorship and asks what "composition" means when the raw material already exists.`,
+  'hypertext-fiction': `Fiction that uses linking structures — in digital form — to allow non-linear reading. Michael Joyce's afternoon, a story (1987) pioneered the form; its relationship to the reader is fundamentally different from print, making reading into navigation.`,
+  'constraint-lit': `Writing produced according to self-imposed formal constraints. The Oulipo group — Perec, Queneau, Calvino — invented this approach; Perec's A Void, written entirely without the letter E, is the most celebrated example of what constraint can force.`,
+  // Architecture – Architecture
+  'residential-arch': `Design of homes — from single-family houses to apartment blocks. Residential architecture is where most people encounter architecture most directly; Frank Lloyd Wright's Prairie houses and the Case Study Houses represent high points of residential ambition.`,
+  'civic-arch': `The design of buildings for civic and institutional purposes — government buildings, libraries, universities, museums. Civic architecture expresses collective values; its grandeur is a form of public rhetoric about what a society values.`,
+  'religious-arch': `Architecture in the service of spiritual experience and religious community. From the Parthenon to Chartres Cathedral to Le Corbusier's Ronchamp chapel, religious architecture has produced some of humanity's greatest spatial achievements.`,
+  'landscape-arch': `Design of outdoor spaces — parks, gardens, campuses, and urban environments. Frederick Law Olmsted (Central Park) and later practitioners have shaped how millions of people experience their cities and regions.`,
+  'urban-design': `Planning and design at the scale of neighborhoods, districts, and cities. Urban design determines how people move through and inhabit cities; its decisions about street width, density, and mixed use shape daily life in profound ways.`,
+  'parametric-arch': `Architecture designed using computational tools that translate parameters into form. Zaha Hadid's fluid geometries and Frank Gehry's titanium curves represent what computational design enables — buildings unbuildable without digital tools.`,
+  'vernacular-arch': `Traditional building methods and forms that evolved in response to local climate, materials, and culture — without architects. Adobe pueblos, Japanese farmhouses, and Mediterranean stone buildings are vernacular traditions that have influenced sustainable design.`,
+  // Architecture – Interior
+  'residential-int': `Design of private living spaces — balancing beauty, function, and the client's personal identity. Residential interior design is intensely personal; its history moves from 18th-century French rococo through Modernist functionalism to today's eclectic personalism.`,
+  'commercial-int': `Design of offices, retail spaces, hotels, and restaurants. Commercial interior design must serve brand identity, staff wellbeing, and customer experience simultaneously; the design of a space can determine whether a business succeeds.`,
+  'exhibition-design': `The design of museum galleries and temporary exhibitions — decisions about how objects are presented, lit, labeled, and sequenced shape what visitors understand and feel. Exhibition design is curation made spatial.`,
+  'set-design': `The design of theatrical and film environments — everything visible on stage or screen except the performers themselves. Set designers work closely with directors to create spaces that support the story's world; great scenography is itself a visual art.`,
+  // Architecture – Product
+  'furniture': `The design of chairs, tables, beds, and storage — objects that structure daily life. Modernist furniture designers (Eames, Aalto, Wegner) created 20th-century classics; contemporary furniture design is one of the richest intersections of craft, industry, and art.`,
+  'transportation': `The design of vehicles — cars, aircraft, trains, ships. Transportation design balances aerodynamics, safety, and aesthetic identity; a Ferrari or a Shinkansen is as much a cultural object as a functional one.`,
+  'consumer-product': `The design of everyday manufactured objects — from toothbrushes to smartphones. Jony Ive's Apple products demonstrated how industrial design could transform a technology company; Dieter Rams's principles for Braun remain foundational.`,
+  'tool-design': `The design of instruments and tools — objects optimized for skilled human use. A well-designed tool disappears in the hand; the history of tool design (from surgical instruments to musical instruments) reflects changing ideas about what expertise means.`,
+  // Architecture – Graphic design
+  'typography': `The art and craft of arranging type — choosing typefaces, setting sizes, spacing, and hierarchy. Typography is the invisible architecture of written communication; great typographers (Bodoni, Tschichold, Matthew Carter) have shaped how we read.`,
+  'branding': `The design of visual identity systems — logos, color palettes, and the total visual language of an organization. Branding design is applied semiotics; a well-designed identity communicates values before a word is read.`,
+  'poster-design': `Graphic communication on a single sheet designed to be seen at distance. Toulouse-Lautrec's poster art, Soviet constructivist posters, and the psychedelic posters of the 1960s are high points of a form that is also the most democratic of visual arts.`,
+  'book-design': `The design of books as physical objects — typography, page layout, paper, binding, and cover design. A well-designed book is a total object whose physical properties support the reading experience; great book designers have shaped culture invisibly.`,
+  'motion-design': `Animation applied to graphic design — titles, logos, infographics, and brand motion. As screens replaced print, motion design became one of the most economically important forms of visual communication.`,
+  // Architecture – Fashion
+  'haute-couture': `Custom-made high fashion, constructed to exacting standards for individual clients. The Paris couture tradition — Chanel, Balenciaga, Dior — represents fashion at its most ambitious and technically demanding; each garment is effectively a one-of-a-kind artwork.`,
+  'ready-to-wear': `Fashion designed for mass production and retail distribution. Prêt-à-porter brought designer aesthetics to wider audiences; contemporary fashion at every price level is produced in this model.`,
+  'costume-design': `The design and creation of garments for theatrical and film production. Costume designers like Edith Head, Sandy Powell, and Eiko Ishioka create character through clothing; a costume is a form of portraiture in cloth and line.`,
+  'accessories': `The design of non-clothing fashion items — jewelry, handbags, shoes, hats, and eyewear. Accessory design is often where fashion becomes most sculptural; Schiaparelli's surrealist jewelry and McQueen's armadillo shoes show their art-object potential.`,
+  // Craft – Woodworking
+  'cabinetry': `The craft of making fine furniture and built-in storage. Cabinetry involves precise joinery, selection of wood grain, and often elaborate surface treatments; 18th-century English and French furniture represents the craft at its most refined.`,
+  'wood-carving': `Cutting decorative or sculptural forms from wood. Wood carving encompasses everything from folk whittling to sophisticated limewood figures — by Riemenschneider and Grinling Gibbons — that rival stone sculpture in complexity.`,
+  'marquetry': `Creating pictorial or decorative patterns by inlaying thin pieces of veneer in contrasting colors and grains. Marquetry was central to French baroque furniture; contemporary marquetry artists create images of extraordinary visual complexity.`,
+  'turning': `Shaping wood on a lathe — the spinning material cut with a tool to create circular forms. Bowl turning and spindle turning are distinct practices; studio turning by artists like Ed Moulthrop elevated the form to fine art.`,
+  'lutherie': `The craft of making stringed instruments — violins, guitars, lutes, and mandolins. A luthier's work requires both scientific precision (graduating plates for acoustic response) and refined aesthetic judgment; the great Cremonese makers set standards still pursued.`,
+  // Craft – Metalsmithing
+  'goldsmithing': `The crafting of objects from gold and silver — vessels, jewelry, and religious artifacts. Goldsmithing is one of the oldest and most technically demanding crafts; Benvenuto Cellini's salt cellar (now in Vienna) represents the Renaissance tradition at its peak.`,
+  'blacksmithing': `Shaping iron and steel at high temperatures — forging, hammering, and quenching. Traditional blacksmithing produced tools and architectural ironwork; contemporary artist-blacksmiths work at the intersection of craft and sculpture.`,
+  'enamelling': `Fusing glass powders onto metal through firing to create permanent, jewel-like color. Cloisonné uses metal partitions to separate colors; champlevé carves channels. Both techniques appear in Byzantine icons, medieval reliquaries, and Art Nouveau jewelry.`,
+  'jewellery': `Designing and making small decorative objects worn on the body. Jewelry occupies a unique position between craft, design, and wearable sculpture; contemporary jewelers like Gerd Rothmann work at the boundary of art and personal adornment.`,
+  // Craft – Ceramics/glass
+  'wheel-throwing': `Centering clay on a spinning wheel and drawing it upward into vessel forms. Wheel-thrown pottery has been practiced for 6,000 years; it combines physical skill with acute sensitivity to the clay's behavior and the form's emergence.`,
+  'hand-building': `Constructing ceramic forms by hand — coiling, slab building, or pinching — without a wheel. Hand-building allows asymmetric, sculptural forms; Korean moon jars and the vessels of Lucy Rie show the technique's remarkable range.`,
+  'raku': `A firing technique originating in 16th-century Japan in which ceramics are removed from the kiln while glowing and subjected to thermal shock or reduction. Raku creates unpredictable, irreproducible surface effects aligned with wabi-sabi aesthetics.`,
+  'glass-blowing': `Shaping molten glass by inflating it through a metal tube while manipulating the form. Glassblowing is intensely physical and often collaborative; Dale Chihuly's large-scale installations have brought the medium to broad public attention.`,
+  'lampworking': `Working hot glass in the flame of a torch to create beads, figures, and scientific glassware. Lampworking allows intricate detailed work impossible in furnace glassblowing; Venetian lampwork beads and contemporary art glass explore very different possibilities.`,
+  // Craft – Paper
+  'bookbinding': `The craft of assembling and protecting books — sewing signatures, making cases, and covering boards. Fine binding is both protective and expressive; French decorative binding, Japanese stab binding, and contemporary artists' books represent different approaches.`,
+  'origami': `The Japanese art of folding paper into sculptural forms without cuts or glue. Origami ranges from simple cranes to extremely complex figures requiring hundreds of precise folds; its mathematical properties have been applied to engineering and space exploration.`,
+  'papermaking': `Making paper from pulp — cotton, linen, or plant fibers — by hand. Hand-made paper has distinctive texture, translucency, and permanence; contemporary paper artists embed materials in the sheet, making the paper itself the artwork.`,
+  'collage': `Combining paper fragments, photographs, and other materials into a composite image. Cubist collage (Picasso, Braque) introduced the technique to fine art; photomontage (Heartfield, Hannah Höch) made it a politically weaponized form.`,
+  'marbling': `Creating swirling multicolor patterns on paper or fabric using pigments floated on water. Marbled paper has been used for book endpapers since the 16th century; contemporary marblers have elevated the technique to a distinctive studio art.`,
+  // Craft – Culinary
+  'haute-cuisine': `The highest level of professional cooking — technically demanding, conceptually ambitious, and typically expensive. From Escoffier's classical techniques to Adrià's molecular gastronomy to Redzepi's foraging, haute cuisine has been a site of genuine avant-garde thinking.`,
+  'pastry': `The art of baking and confectionery — from breads and croissants to elaborate dessert constructions. Pastry represents perhaps the most technically demanding branch of culinary art; great pastry chefs combine structural precision with flavor complexity.`,
+  'fermentation': `The craft of transforming food through microbial activity — making wine, beer, cheese, kimchi, miso, and sourdough. Fermentation is humanity's oldest food technology; the contemporary fermentation revival has elevated it to a sophisticated culinary art.`,
+  'plating': `The art of arranging food on a plate — composition, color, texture, and height — creating a visual and tactile experience before the first taste. Plating is the most explicitly visual dimension of culinary art, approaching still-life composition.`,
+  'cocktail': `The craft of creating mixed drinks — balancing spirits, acid, sweetness, bitters, and garnish. The craft cocktail movement revived pre-Prohibition recipes while encouraging bartenders as creative artists; a great cocktail is a complete sensory experience in miniature.`,
+  // Craft – Garden
+  'ikebana': `The Japanese art of flower arrangement, emphasizing asymmetry, negative space, and the expression of season. Unlike Western floristry's abundance, ikebana uses minimal plant material to create compositions as much about empty space as about the flowers.`,
+  'bonsai': `The cultivation and shaping of miniature trees in containers, creating the appearance of aged, full-scale specimens. Bonsai is a long-term practice spanning decades or centuries; a great specimen embodies patience and deep ecological sensitivity.`,
+  'landscape-garden': `The design and cultivation of garden spaces — from formal geometric gardens to the English landscape garden's naturalistic style. Great gardens (Versailles, Ryoan-ji, Hidcote) are designed environments that change meaningfully with the seasons.`,
+  'topiary': `The art of clipping trees and shrubs into geometric or figurative shapes. Topiary transforms living plants into architecture or sculpture; formal gardens from ancient Rome to 17th-century France have used it as a demonstration of human order over nature.`,
+  // Digital – Visual
+  'digital-painting': `Creating images with digital tools that simulate or replace traditional painting media. Digital painting is used across illustration, concept art, and fine art; tools like Procreate have made the medium accessible while artists like David Hockney use iPads for serious studio practice.`,
+  'generative-art': `Art created through autonomous systems — algorithms, code, or rules — that produce visual output. From Vera Molnár's early computer drawings to Sol LeWitt's wall instructions to contemporary code-based art, generative practice explores what authorship means when rules generate form.`,
+  'nft-art': `Digital art authenticated and sold as unique tokens on a blockchain. NFTs created a new market for digital artists, enabling direct sales of one-of-a-kind digital works; the form raises unresolved questions about value, ownership, and environmental impact.`,
+  'data-viz-art': `Art that uses datasets as its raw material, transforming information into visual form. Edward Tufte established data visualization as a design discipline; artists like Refik Anadol use massive datasets to create immersive visual environments.`,
+  'glitch-art': `Art that uses or aestheticizes digital errors — pixel corruption, signal disruption, codec failure. Glitch art exposes the material reality of digital systems, finding beauty in breakdown and functioning as a critique of seamless technological surfaces.`,
+  'pixel-art': `Imagery created on a grid of visible pixels, typically with a limited color palette, referencing early computer and video game graphics. Pixel art has evolved from a technical limitation into a deliberate aesthetic with its own distinctive visual language.`,
+  // Digital – Interactive
+  'vr-art': `Art experienced through virtual reality headsets that create immersive three-dimensional environments. VR art can place viewers inside impossible spaces at planetary scale or microscopic depth; artists like Nonny de la Peña and Laurie Anderson have used the medium for documentary and poetic purposes.`,
+  'net-art': `Art that exists on the internet and uses its protocols, aesthetics, and social dynamics as its medium. JODI and Olia Lialina created work in the 1990s that has no existence off the network; contemporary net art reflects the changed internet of social media and surveillance.`,
+  'sensor-art': `Art that uses sensors — cameras, microphones, accelerometers, biometric devices — to make audiences' bodies and movements part of the work. Sensor-based installation creates responsive environments where the artwork adapts to its viewers in real time.`,
+  'ai-art': `Art made using artificial intelligence as a creative tool or co-author. From early neural network experiments to contemporary generative models, AI-generated imagery has exploded; the form raises fundamental questions about creativity, authorship, and originality.`,
+  'biofeedback-art': `Art that uses data from the body — heart rate, brainwaves, skin conductance — as an input to drive visual or sonic outputs. Biofeedback art makes internal biological states visible, exploring the boundary between self, technology, and environment.`,
+  // Digital – Sound
+  'sound-installation': `Art experienced through listening in a space specifically designed for the work. Janet Cardiff's audio walks, Alvin Lucier's I Am Sitting in a Room, and Max Neuhaus's Times Square piece represent the breadth of this form.`,
+  'soundscape': `Listening to, recording, and composing with environmental sound. R. Murray Schafer coined the term; soundscape composition treats the acoustic environment as a text to be read, preserved, or creatively transformed.`,
+  'radio-art': `Art made specifically for radio broadcast — exploiting the medium's invisibility, intimacy, and capacity for fiction. The BBC Radiophonic Workshop, John Cage's radio works, and contemporary podcast artists represent different approaches to broadcast as art.`,
+  'podcast-art': `Audio content produced for on-demand digital distribution, conceived as an art form rather than just information delivery. Podcasts like S-Town treat the medium as a vehicle for narrative art; others use the format for experimental sound work.`,
+  // Digital – UX
+  'ui-design': `The visual and interactive design of software interfaces — screens, buttons, typography, and animation. UI design determines what digital experiences look and feel like to use; Apple's iOS and Material Design are the dominant contemporary frameworks.`,
+  'interaction-design': `The design of how people interact with systems — the logic of digital products, their flows, feedback, and behavior. Interaction design is invisible when successful; its failures produce frustration and confusion.`,
+  'service-design': `The design of complete service experiences — the sum of all touchpoints a person has with an organization. Service design thinks systemically, designing not just interfaces but processes, staff training, and physical spaces.`,
+  'experience-design': `The holistic design of complete human experiences — often at the intersection of physical and digital environments. Experience design encompasses museum experiences, brand activations, and urban interventions that create memorable encounters.`,
+  // Games
+  'video-game-art': `The visual art direction of video games — concept art, character design, environment design, and overall aesthetic vision. Games like Ico, Okami, and Hollow Knight demonstrate that game art direction can be as distinctive and intentional as cinema or painting.`,
+  'narrative-game': `Video games in which storytelling and character are the primary creative achievements. From Planescape: Torment to The Last of Us, narrative games have developed a form of interactive storytelling unique to the medium — where player choice shapes and complicates the story.`,
+  'game-design': `The design of the rules, systems, and interactions that constitute a game. Game design is abstract creative work — designing the space of possible experiences — operating at the intersection of mathematics, psychology, and aesthetics.`,
+  'board-game-design': `The design of physical tabletop games. The board gaming renaissance since the late 1990s has produced games (Catan, Pandemic, Gloomhaven) that treat design as a serious creative discipline with its own growing critical literature.`,
+  'interactive-fiction': `Text-based games and branching narratives that give readers agency over the story. Interactive fiction ranges from the early Zork tradition to contemporary Twine games that explore queerness, trauma, and identity through player choice.`,
+  'larp': `Live Action Role-Play — participatory storytelling in which players embody characters in physical space. LARP ranges from fantasy combat games to sophisticated Nordic larp (Jeepform) that blurs the line between game and theatre.`,
+  'sports-as-art': `The consideration of sport and martial arts as aesthetic practice — the boxer's footwork as choreography, the basketball player's improvisation as jazz. This lens reframes athletic excellence as a form of performance art valued for its form as much as its outcome.`,
+};
+
 // ── STATE ──
 let navPath = [];
 let searchQ  = '';
@@ -889,6 +1394,9 @@ function render() {
         render();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       };
+    } else {
+      const d = DESCRIPTIONS[node.id];
+      if (d) card.onclick = () => openModal(node.label, d, color);
     }
     grid.appendChild(card);
   });
@@ -913,7 +1421,7 @@ function renderSearch() {
 
   const all  = flatAll(DATA);
   const q    = searchQ.toLowerCase();
-  const hits = all.filter(n => n.label.toLowerCase().includes(q) || (n.desc || '').toLowerCase().includes(q));
+  const hits = all.filter(n => n.label.toLowerCase().includes(q) || (n.desc || '').toLowerCase().includes(q) || (DESCRIPTIONS[n.id] || '').toLowerCase().includes(q));
 
   if (!hits.length) {
     const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No results found.'; mc.appendChild(e); return;
@@ -938,6 +1446,10 @@ function renderSearch() {
       `<div class="card-dot"></div>` +
       `<div class="card-label">${node.label}</div>` +
       (node.desc ? `<div class="card-desc">${node.desc}</div>` : '');
+    if (isLeaf) {
+      const d = DESCRIPTIONS[node.id];
+      if (d) card.onclick = () => openModal(node.label, d, color);
+    }
     grid.appendChild(card);
   });
 
@@ -955,6 +1467,20 @@ function doSearch(val) {
   render();
 }
 
+function openModal(label, desc, color) {
+  document.getElementById('modal-title').textContent = label;
+  document.getElementById('modal-body').textContent  = desc;
+  document.getElementById('modal-dot').style.background = color || 'var(--accent)';
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+
 // keyboard shortcut: / to focus search
 document.addEventListener('keydown', e => {
   if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
@@ -962,6 +1488,8 @@ document.addEventListener('keydown', e => {
     document.getElementById('search').focus();
   }
   if (e.key === 'Escape') {
+    const modal = document.getElementById('modal');
+    if (modal.classList.contains('open')) { closeModal(); return; }
     const s = document.getElementById('search');
     if (searchQ) { searchQ = ''; s.value = ''; render(); }
     else if (navPath.length) { goBack(); }
