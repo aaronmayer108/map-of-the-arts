@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map of the Arts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0e0d0b;
+    --bg2:      #161510;
+    --bg3:      #1d1c17;
+    --surface:  #242318;
+    --surface2: #2d2c21;
+    --border:   rgba(255,255,255,0.07);
+    --border2:  rgba(255,255,255,0.13);
+    --text:     #f0ede4;
+    --text2:    #a09d90;
+    --text3:    #6a6860;
+    --accent:   #c9a84c;
+    --accent2:  #a07830;
+    --radius:   10px;
+    --radius-lg: 16px;
+
+    --c-music:   #8ab4d4;
+    --c-poetry:  #b8a0e0;
+    --c-visual:  #e08888;
+    --c-perform: #7ec4a8;
+    --c-film:    #a0c870;
+    --c-lit:     #e0b870;
+    --c-arch:    #a0a898;
+    --c-craft:   #e09868;
+    --c-digital: #70c8c0;
+    --c-games:   #90c878;
+    --c-other:   #888888;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: relative;
+    padding: 5rem 2rem 4rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .header-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 20% 80%, rgba(138,180,212,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 80% 80%, rgba(176,128,224,0.05) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .header-ornament {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .header-ornament::before,
+  .header-ornament::after {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 1px;
+    background: var(--accent2);
+    opacity: 0.6;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    font-weight: 600;
+    line-height: 1.1;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 1rem;
+    font-size: 1rem;
+    color: var(--text2);
+    font-weight: 300;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.65;
+  }
+
+  .stats-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 2.2rem;
+    flex-wrap: wrap;
+  }
+  .stat {
+    text-align: center;
+  }
+  .stat-n {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .stat-l {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .stat-div {
+    width: 1px;
+    height: 36px;
+    background: var(--border2);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text3);
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .breadcrumb .bc-link {
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .breadcrumb .bc-link:hover { opacity: 0.75; }
+  .breadcrumb .bc-sep { color: var(--text3); opacity: 0.5; }
+  .breadcrumb .bc-cur { color: var(--text2); white-space: nowrap; }
+
+  .search-wrap {
+    position: relative;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text3);
+    pointer-events: none;
+  }
+  .search-wrap input {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 8px 14px 8px 34px;
+    width: 240px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-wrap input::placeholder { color: var(--text3); }
+  .search-wrap input:focus { border-color: rgba(201,168,76,0.4); }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .back-btn:hover { background: var(--surface2); color: var(--text); }
+  .back-btn svg { flex-shrink: 0; }
+
+  /* ── GRID ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 10px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 16px 14px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .15s;
+    min-height: 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--accent));
+    opacity: 0;
+    transition: opacity .2s;
+  }
+  .card:hover {
+    background: var(--surface2);
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+  .card:hover::before { opacity: 1; }
+
+  .card.leaf {
+    cursor: default;
+  }
+  .card.leaf:hover {
+    transform: none;
+  }
+
+  .card-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--card-color, var(--text3));
+    margin-bottom: 6px;
+    flex-shrink: 0;
+  }
+  .card-label {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.35;
+  }
+  .card-desc {
+    font-size: 11.5px;
+    color: var(--text3);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+  .card-count {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: auto;
+    padding-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .card-count svg { opacity: 0.5; }
+
+  /* Top-level cards are a bit bigger */
+  .top-level .card {
+    min-height: 120px;
+    padding: 18px 18px 16px;
+  }
+  .top-level .card-label {
+    font-size: 14.5px;
+    font-weight: 500;
+  }
+
+  /* ── SECTION LABELS ── */
+  .section-tag {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+    font-weight: 500;
+    margin: 2rem 0 0.6rem;
+  }
+
+  /* ── EMPTY / RESULTS ── */
+  .empty {
+    font-size: 14px;
+    color: var(--text3);
+    padding: 2rem 0;
+  }
+  .results-label {
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 0.75rem;
+  }
+  .results-label strong { color: var(--text2); }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.7;
+  }
+  footer a { color: var(--text3); text-decoration: underline; text-underline-offset: 3px; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .grid .card {
+    animation: fadeUp .25s ease both;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    h1 { font-size: 2.4rem; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .search-wrap input { width: 180px; }
+    .stats-row { gap: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-bg"></div>
+  <div class="header-ornament">A Taxonomy</div>
+  <h1>Map of the <em>Arts</em></h1>
+  <p class="subtitle">A comprehensive index of human artistic expression — from ancient oral traditions to generative AI, classical ballet to breakdancing.</p>
+  <div class="stats-row">
+    <div class="stat"><div class="stat-n">9</div><div class="stat-l">Domains</div></div>
+    <div class="stat-div"></div>
+    <div class="stat"><div class="stat-n" id="stat-cats">—</div><div class="stat-l">Categories</div></div>
+    <div class="stat-div"></div>
+    <div class="stat"><div class="stat-n" id="stat-forms">—</div><div class="stat-l">Art forms</div></div>
+  </div>
+</header>
+
+<main>
+  <div class="controls">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+      <button class="back-btn" id="back-btn" style="display:none" onclick="goBack()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        Back
+      </button>
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search" placeholder="Search all arts…" oninput="doSearch(this.value)" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+  </div>
+  <div id="main-content"></div>
+</main>
+
+<footer>
+  <p>A map of human artistic expression — inevitably incomplete, always evolving.</p>
+  <p style="margin-top:6px">Browse freely. Every art form is a door.</p>
+</footer>
+
+<script>
+const DATA = [
+  { id:'music', label:'Music', color:'var(--c-music)', desc:'Sound, rhythm, harmony, voice', children:[
+    { id:'vocal', label:'Vocal music', children:[
+      {id:'opera',label:'Opera'},{id:'art-song',label:'Art song & lieder'},
+      {id:'choral',label:'Choral & choir'},{id:'barbershop',label:'Barbershop & a cappella'},
+      {id:'throat',label:'Throat singing'},{id:'sacred-chant',label:'Sacred chant & recitative'},
+      {id:'pop-vocal',label:'Pop & rock vocals'},{id:'blues-vocal',label:'Blues & soul singing'},
+      {id:'gospel',label:'Gospel'},{id:'beatbox',label:'Beatboxing & vocal percussion'},
+    ]},
+    { id:'instrumental', label:'Instrumental music', children:[
+      {id:'chamber',label:'Chamber music'},{id:'orchestral',label:'Orchestral & symphonic'},
+      {id:'solo-piano',label:'Solo piano'},{id:'guitar-classical',label:'Classical guitar'},
+      {id:'organ',label:'Pipe organ'},{id:'wind-ensemble',label:'Wind & brass ensemble'},
+      {id:'percussion-ensemble',label:'Percussion ensemble'},{id:'string-quartet',label:'String quartet'},
+    ]},
+    { id:'folk-trad', label:'Folk & traditional', children:[
+      {id:'folk-euro',label:'European folk'},{id:'folk-appalachian',label:'Appalachian & Americana'},
+      {id:'folk-celtic',label:'Celtic & Irish'},{id:'folk-nordic',label:'Nordic folk'},
+      {id:'folk-balkan',label:'Balkan'},{id:'folk-african',label:'African traditional'},
+      {id:'folk-latam',label:'Latin American folk'},{id:'folk-mena',label:'Middle Eastern & North African'},
+      {id:'folk-south-asian',label:'South Asian folk'},{id:'folk-east-asian',label:'East Asian folk'},
+      {id:'folk-pacific',label:'Pacific & Indigenous'},
+    ]},
+    { id:'world-classical', label:'World classical traditions', children:[
+      {id:'hindustani',label:'Hindustani classical'},{id:'carnatic',label:'Carnatic classical'},
+      {id:'maqam',label:'Maqam & Arabic classical'},{id:'gagaku',label:'Japanese gagaku'},
+      {id:'gamelan',label:'Gamelan (Javanese/Balinese)'},{id:'guqin-music',label:'Chinese guqin music'},
+      {id:'persian-classical',label:'Persian classical'},
+    ]},
+    { id:'jazz', label:'Jazz & blues', children:[
+      {id:'trad-jazz',label:'Traditional jazz & Dixieland'},{id:'swing',label:'Swing & big band'},
+      {id:'bebop',label:'Bebop'},{id:'cool-jazz',label:'Cool jazz'},{id:'hard-bop',label:'Hard bop'},
+      {id:'modal-jazz',label:'Modal jazz'},{id:'free-jazz',label:'Free jazz & avant-garde'},
+      {id:'fusion',label:'Jazz fusion'},{id:'delta-blues',label:'Delta blues'},
+      {id:'chicago-blues',label:'Chicago blues'},{id:'rhythm-and-blues',label:'Rhythm & blues'},
+    ]},
+    { id:'pop-rock', label:'Pop, rock & derivatives', children:[
+      {id:'rock',label:'Rock'},{id:'pop',label:'Pop'},{id:'metal',label:'Heavy metal'},
+      {id:'punk',label:'Punk & post-punk'},{id:'indie',label:'Indie & alternative'},
+      {id:'country',label:'Country & bluegrass'},{id:'reggae',label:'Reggae & ska'},
+      {id:'soul',label:'Soul & funk'},{id:'rnb',label:'Contemporary R&B'},
+      {id:'hip-hop',label:'Hip-hop & rap'},{id:'latin-pop',label:'Latin pop & urban'},
+    ]},
+    { id:'electronic', label:'Electronic music', children:[
+      {id:'techno',label:'Techno'},{id:'house',label:'House'},{id:'drum-and-bass',label:'Drum & bass'},
+      {id:'ambient',label:'Ambient'},{id:'noise',label:'Noise & industrial'},
+      {id:'electroacoustic',label:'Electroacoustic & musique concrète'},
+      {id:'edm',label:'EDM & club music'},{id:'synth-pop',label:'Synth-pop'},
+      {id:'experimental-elec',label:'Experimental electronic'},
+    ]},
+    { id:'composed-20c', label:'20th–21st century composed', children:[
+      {id:'impressionism',label:'Musical impressionism'},{id:'serialism',label:'Serialism & 12-tone'},
+      {id:'minimalism-music',label:'Minimalism'},{id:'spectralism',label:'Spectralism'},
+      {id:'new-complexity',label:'New complexity'},{id:'microtonality',label:'Microtonal music'},
+      {id:'aleatoric',label:'Aleatoric & chance music'},{id:'film-score',label:'Film & game scoring'},
+    ]},
+  ]},
+
+  { id:'poetry', label:'Poetry', color:'var(--c-poetry)', desc:'Language heightened into art', children:[
+    { id:'lyric-poetry', label:'Lyric poetry', children:[
+      {id:'sonnet',label:'Sonnet'},{id:'ode',label:'Ode'},{id:'elegy',label:'Elegy'},
+      {id:'ghazal',label:'Ghazal'},{id:'haiku',label:'Haiku & tanka'},
+      {id:'confessional',label:'Confessional poetry'},{id:'imagism',label:'Imagism'},
+      {id:'pastoral',label:'Pastoral poetry'},
+    ]},
+    { id:'epic-narrative', label:'Epic & narrative poetry', children:[
+      {id:'epic',label:'Epic poetry'},{id:'ballad',label:'Ballad'},
+      {id:'verse-novel',label:'Verse novel'},{id:'romance-poetry',label:'Verse romance'},
+      {id:'mythology-poetry',label:'Mythological narrative'},
+    ]},
+    { id:'dramatic-poetry', label:'Dramatic poetry', children:[
+      {id:'dramatic-monologue',label:'Dramatic monologue'},{id:'verse-drama',label:'Verse drama'},
+      {id:'spoken-word',label:'Spoken word & slam'},
+    ]},
+    { id:'formal-verse', label:'Fixed forms & prosody', children:[
+      {id:'villanelle',label:'Villanelle'},{id:'sestina',label:'Sestina'},
+      {id:'pantoum',label:'Pantoum'},{id:'terza-rima',label:'Terza rima'},
+      {id:'rondeau',label:'Rondeau & triolet'},{id:'acrostic',label:'Acrostic & shaped poetry'},
+    ]},
+    { id:'free-verse', label:'Free verse & open form', children:[
+      {id:'vers-libre',label:'Vers libre'},{id:'projective-verse',label:'Projective verse'},
+      {id:'breath-line',label:'Breath-line poetry'},{id:'prose-poem',label:'Prose poem'},
+    ]},
+    { id:'oral-poetry', label:'Oral & folk traditions', children:[
+      {id:'griot',label:'Griot & oral epic (African)'},{id:'skaldic',label:'Skaldic verse (Norse)'},
+      {id:'troubadour',label:'Troubadour & trouvère'},{id:'qasida',label:'Qasida (Arabic/Persian)'},
+      {id:'slam',label:'Slam poetry'},{id:'rap-lyrics',label:'Rap as poetry'},
+    ]},
+    { id:'visual-poetry', label:'Visual & experimental poetry', children:[
+      {id:'concrete-poetry',label:'Concrete poetry'},{id:'language-poetry',label:'Language poetry'},
+      {id:'flarf',label:'Flarf & internet poetics'},{id:'erasure',label:'Erasure & blackout poetry'},
+    ]},
+  ]},
+
+  { id:'visual', label:'Visual arts', color:'var(--c-visual)', desc:'Painting, sculpture, image-making', children:[
+    { id:'painting', label:'Painting', children:[
+      {id:'oil',label:'Oil painting'},{id:'watercolor',label:'Watercolor'},
+      {id:'acrylic',label:'Acrylic'},{id:'tempera',label:'Tempera & egg distemper'},
+      {id:'fresco',label:'Fresco'},{id:'encaustic',label:'Encaustic'},
+      {id:'gouache',label:'Gouache'},{id:'ink-painting',label:'Ink painting (East Asian)'},
+      {id:'miniature-painting',label:'Miniature painting'},{id:'icon-painting',label:'Icon painting'},
+    ]},
+    { id:'drawing', label:'Drawing & illustration', children:[
+      {id:'charcoal',label:'Charcoal'},{id:'graphite',label:'Graphite & pencil'},
+      {id:'pen-ink',label:'Pen & ink'},{id:'pastel',label:'Pastel'},
+      {id:'contour',label:'Contour & life drawing'},{id:'illustration',label:'Illustration'},
+      {id:'comic-art',label:'Comics & graphic novels'},{id:'storyboard',label:'Storyboarding'},
+    ]},
+    { id:'printmaking', label:'Printmaking', children:[
+      {id:'woodblock',label:'Woodblock & woodcut'},{id:'etching',label:'Etching & engraving'},
+      {id:'lithography',label:'Lithography'},{id:'silkscreen',label:'Screen printing & silkscreen'},
+      {id:'linocut',label:'Linocut'},{id:'mezzotint',label:'Mezzotint'},
+      {id:'digital-print',label:'Giclée & digital print'},
+    ]},
+    { id:'sculpture', label:'Sculpture', children:[
+      {id:'carving',label:'Stone & wood carving'},{id:'modelling',label:'Clay modelling'},
+      {id:'casting',label:'Bronze casting'},{id:'welding-sculpt',label:'Metal welding & assemblage'},
+      {id:'kinetic-sculpt',label:'Kinetic sculpture'},{id:'installation-art',label:'Installation art'},
+      {id:'site-specific',label:'Site-specific & land art'},
+      {id:'ice-sand',label:'Ice, sand & ephemeral sculpture'},
+    ]},
+    { id:'photography', label:'Photography', children:[
+      {id:'documentary-photo',label:'Documentary & photojournalism'},
+      {id:'portrait-photo',label:'Portrait photography'},
+      {id:'landscape-photo',label:'Landscape photography'},
+      {id:'street-photo',label:'Street photography'},
+      {id:'fine-art-photo',label:'Fine art photography'},
+      {id:'experimental-photo',label:'Experimental & darkroom'},
+      {id:'astro-photo',label:'Astrophotography'},
+    ]},
+    { id:'textile-fiber', label:'Textile & fiber arts', children:[
+      {id:'weaving',label:'Weaving & tapestry'},{id:'embroidery',label:'Embroidery & needlepoint'},
+      {id:'quilting',label:'Quilting'},{id:'knitting-crochet',label:'Knitting & crochet'},
+      {id:'lacemaking',label:'Lacemaking'},{id:'batik',label:'Batik & resist dyeing'},
+      {id:'feltmaking',label:'Feltmaking'},{id:'fiber-art',label:'Contemporary fiber art'},
+    ]},
+    { id:'mosaic-glass', label:'Mosaic, glass & ceramics', children:[
+      {id:'mosaic',label:'Mosaic'},{id:'stained-glass',label:'Stained glass'},
+      {id:'blown-glass',label:'Blown glass'},{id:'pottery',label:'Pottery & ceramics'},
+      {id:'porcelain',label:'Porcelain painting'},{id:'enamel',label:'Enamel work'},
+    ]},
+    { id:'street-art', label:'Street & public art', children:[
+      {id:'mural',label:'Mural painting'},{id:'graffiti',label:'Graffiti & tagging'},
+      {id:'paste-up',label:'Paste-up & wheat paste'},
+      {id:'yarn-bomb',label:'Yarn bombing'},{id:'public-sculpture',label:'Public sculpture'},
+    ]},
+  ]},
+
+  { id:'perform', label:'Performing arts', color:'var(--c-perform)', desc:'Live presence, body, time', children:[
+    { id:'theatre', label:'Theatre', children:[
+      {id:'tragedy',label:'Tragedy'},{id:'comedy-theatre',label:'Comedy'},
+      {id:'tragicomedy',label:'Tragicomedy'},{id:'melodrama',label:'Melodrama'},
+      {id:'absurdist',label:'Absurdist theatre'},{id:'epic-theatre',label:'Epic theatre (Brechtian)'},
+      {id:'devised',label:'Devised & ensemble theatre'},
+      {id:'immersive-theatre',label:'Immersive theatre'},
+      {id:'verbatim',label:'Verbatim theatre'},
+      {id:'commedia',label:"Commedia dell'arte"},
+    ]},
+    { id:'musical-theatre', label:'Musical theatre', children:[
+      {id:'musical',label:'Broadway musical'},{id:'operetta',label:'Operetta & light opera'},
+      {id:'revue',label:'Revue & cabaret'},{id:'jukebox-musical',label:'Jukebox musical'},
+      {id:'dance-musical',label:'Dance musical'},
+    ]},
+    { id:'dance', label:'Dance', children:[
+      { id:'concert-dance', label:'Concert dance', children:[
+        {id:'ballet',label:'Classical ballet'},{id:'contemp-dance',label:'Contemporary dance'},
+        {id:'modern-dance',label:'Modern dance'},{id:'post-modern-dance',label:'Post-modern dance'},
+        {id:'butoh',label:'Butoh'},{id:'physical-theatre',label:'Physical theatre'},
+      ]},
+      { id:'social-dance', label:'Social & partner dance', children:[
+        {id:'ballroom',label:'Ballroom & Latin'},{id:'swing-dance',label:'Swing & Lindy Hop'},
+        {id:'tango',label:'Argentine tango'},{id:'salsa',label:'Salsa & mambo'},
+        {id:'folk-dance',label:'Folk & country dance'},
+      ]},
+      { id:'street-dance', label:'Street & club dance', children:[
+        {id:'breakdancing',label:'Breaking (breakdancing)'},{id:'waacking',label:'Waacking & voguing'},
+        {id:'popping',label:'Popping & locking'},{id:'house-dance',label:'House dance'},
+        {id:'krump',label:'Krump'},
+      ]},
+      { id:'trad-dance', label:'Traditional & ritual dance', children:[
+        {id:'bharatanatyam',label:'Bharatanatyam'},{id:'noh-kyogen',label:'Noh & Kyogen'},
+        {id:'chinese-dance',label:'Chinese classical dance'},{id:'flamenco',label:'Flamenco'},
+        {id:'hula',label:'Hula (Hawaiian)'},{id:'kathak',label:'Kathak'},
+        {id:'cossack-dance',label:'Cossack & Ukrainian folk dance'},
+      ]},
+    ]},
+    { id:'circus', label:'Circus & physical arts', children:[
+      {id:'acrobatics',label:'Acrobatics'},{id:'trapeze',label:'Trapeze & aerial silks'},
+      {id:'juggling',label:'Juggling'},{id:'tight-rope',label:'Tightrope & slack line'},
+      {id:'clown',label:'Clowning'},{id:'contortion',label:'Contortion'},
+      {id:'magic',label:'Stage magic & illusion'},{id:'parkour-art',label:'Parkour as art'},
+    ]},
+    { id:'puppetry', label:'Puppetry & object theatre', children:[
+      {id:'marionette',label:'Marionette'},{id:'hand-puppet',label:'Hand puppet'},
+      {id:'shadow-puppet',label:'Shadow puppetry'},{id:'bunraku',label:'Bunraku (Japanese)'},
+      {id:'rod-puppet',label:'Rod puppet'},{id:'object-theatre',label:'Object theatre'},
+    ]},
+    { id:'stand-up', label:'Stand-up & spoken performance', children:[
+      {id:'stand-up-comedy',label:'Stand-up comedy'},{id:'storytelling-perf',label:'Storytelling performance'},
+      {id:'spoken-word-perf',label:'Spoken word'},{id:'improv',label:'Improv comedy'},
+      {id:'sketch',label:'Sketch comedy'},{id:'lecture-performance',label:'Lecture performance'},
+    ]},
+    { id:'performance-art', label:'Performance art', children:[
+      {id:'happenings',label:'Happenings (Kaprow)'},{id:'fluxus',label:'Fluxus'},
+      {id:'body-art',label:'Body art'},{id:'endurance-art',label:'Endurance performance'},
+      {id:'relational-aesthetics',label:'Relational aesthetics'},
+    ]},
+    { id:'opera-category', label:'Opera & music-theatre', children:[
+      {id:'opera-seria',label:'Opera seria'},{id:'opera-buffa',label:'Opera buffa'},
+      {id:'bel-canto',label:'Bel canto'},{id:'verismo',label:'Verismo'},
+      {id:'wagner-opera',label:'Wagnerian music drama'},{id:'modern-opera',label:'20th–21st c. opera'},
+      {id:'chinese-opera',label:'Chinese opera (Jingju)'},{id:'noh',label:'Japanese Noh'},
+    ]},
+  ]},
+
+  { id:'film', label:'Film & moving image', color:'var(--c-film)', desc:'Cinema, video, animation', children:[
+    { id:'narrative-film', label:'Narrative cinema', children:[
+      {id:'drama',label:'Drama'},{id:'comedy-film',label:'Comedy'},
+      {id:'thriller',label:'Thriller & suspense'},{id:'horror-film',label:'Horror'},
+      {id:'sci-fi',label:'Science fiction'},{id:'fantasy-film',label:'Fantasy'},
+      {id:'western',label:'Western'},{id:'war-film',label:'War film'},
+      {id:'romance-film',label:'Romance'},{id:'musical-film',label:'Musical film'},
+      {id:'biopic',label:'Biopic'},
+    ]},
+    { id:'documentary', label:'Documentary', children:[
+      {id:'observational',label:'Observational & direct cinema'},
+      {id:'expository',label:'Expository documentary'},
+      {id:'participatory',label:'Participatory documentary'},
+      {id:'essay-film',label:'Essay film'},{id:'mockumentary',label:'Mockumentary'},
+      {id:'nature-doc',label:'Nature documentary'},{id:'true-crime',label:'True crime'},
+    ]},
+    { id:'experimental-film', label:'Experimental film', children:[
+      {id:'avant-garde-film',label:'Avant-garde cinema'},
+      {id:'structuralist-film',label:'Structuralist film'},
+      {id:'video-art',label:'Video art'},
+      {id:'found-footage-film',label:'Found footage art'},
+      {id:'expanded-cinema',label:'Expanded cinema'},
+    ]},
+    { id:'animation', label:'Animation', children:[
+      {id:'traditional-anim',label:'Traditional cel animation'},
+      {id:'stop-motion',label:'Stop motion'},{id:'claymation',label:'Claymation'},
+      {id:'2d-digital',label:'2D digital animation'},{id:'3d-cgi',label:'3D CGI'},
+      {id:'motion-graphics',label:'Motion graphics'},{id:'anime',label:'Anime (Japanese)'},
+      {id:'rotoscope',label:'Rotoscoping'},
+    ]},
+    { id:'short-form', label:'Short & non-theatrical film', children:[
+      {id:'short-film',label:'Short film'},{id:'music-video',label:'Music video'},
+      {id:'commercial',label:'Commercial & advertising'},{id:'web-series',label:'Web series'},
+    ]},
+  ]},
+
+  { id:'lit', label:'Literature', color:'var(--c-lit)', desc:'Prose, narrative, the written word', children:[
+    { id:'fiction', label:'Fiction', children:[
+      {id:'novel',label:'Novel'},{id:'novella',label:'Novella'},
+      {id:'short-story',label:'Short story'},{id:'flash-fiction',label:'Flash fiction'},
+      {id:'genre-fiction',label:'Genre fiction'},{id:'literary-fiction',label:'Literary fiction'},
+      {id:'historical-fiction',label:'Historical fiction'},
+      {id:'magical-realism',label:'Magical realism'},{id:'autofiction',label:'Autofiction'},
+    ]},
+    { id:'nonfiction', label:'Nonfiction', children:[
+      {id:'essay',label:'Essay'},{id:'memoir',label:'Memoir & autobiography'},
+      {id:'biography',label:'Biography'},{id:'narrative-nonfiction',label:'Narrative nonfiction'},
+      {id:'criticism',label:'Literary & art criticism'},
+      {id:'nature-writing',label:'Nature writing'},{id:'travel-writing',label:'Travel writing'},
+      {id:'food-writing',label:'Food writing'},{id:'sports-writing',label:'Sports writing'},
+    ]},
+    { id:'drama-lit', label:'Dramatic literature', children:[
+      {id:'play-script',label:'Play script'},{id:'radio-play',label:'Radio play'},
+      {id:'screenplay',label:'Screenplay'},{id:'teleplay',label:'Teleplay'},
+      {id:'libretto',label:'Libretto (opera & musical)'},
+    ]},
+    { id:'oral-lit', label:'Oral & folk literature', children:[
+      {id:'myth-legend',label:'Myth & legend'},{id:'fairy-tale',label:'Fairy tale & folktale'},
+      {id:'epic-trad',label:'Epic tradition'},{id:'fable',label:'Fable & parable'},
+      {id:'trickster-story',label:'Trickster & oral cycle'},
+    ]},
+    { id:'hybrid-forms', label:'Hybrid & experimental forms', children:[
+      {id:'graphic-novel',label:'Graphic novel'},{id:'lyric-essay',label:'Lyric essay'},
+      {id:'found-text',label:'Found text & appropriation'},
+      {id:'hypertext-fiction',label:'Hypertext fiction'},
+      {id:'constraint-lit',label:'Oulipo & constraint writing'},
+    ]},
+  ]},
+
+  { id:'arch', label:'Architecture & design', color:'var(--c-arch)', desc:'Space, form, function', children:[
+    { id:'architecture', label:'Architecture', children:[
+      {id:'residential-arch',label:'Residential architecture'},
+      {id:'civic-arch',label:'Civic & institutional'},
+      {id:'religious-arch',label:'Religious architecture'},
+      {id:'landscape-arch',label:'Landscape architecture'},
+      {id:'urban-design',label:'Urban design & planning'},
+      {id:'parametric-arch',label:'Parametric & computational'},
+      {id:'vernacular-arch',label:'Vernacular architecture'},
+    ]},
+    { id:'interior-design', label:'Interior design', children:[
+      {id:'residential-int',label:'Residential interiors'},
+      {id:'commercial-int',label:'Commercial interiors'},
+      {id:'exhibition-design',label:'Exhibition & museum design'},
+      {id:'set-design',label:'Stage & set design'},
+    ]},
+    { id:'product-design', label:'Product & industrial design', children:[
+      {id:'furniture',label:'Furniture design'},
+      {id:'transportation',label:'Transportation design'},
+      {id:'consumer-product',label:'Consumer product design'},
+      {id:'tool-design',label:'Tool & instrument design'},
+    ]},
+    { id:'graphic-design', label:'Graphic design', children:[
+      {id:'typography',label:'Typography'},{id:'branding',label:'Branding & identity'},
+      {id:'poster-design',label:'Poster & print design'},
+      {id:'book-design',label:'Book & editorial design'},
+      {id:'motion-design',label:'Motion design & titles'},
+    ]},
+    { id:'fashion-design', label:'Fashion & textile design', children:[
+      {id:'haute-couture',label:'Haute couture'},
+      {id:'ready-to-wear',label:'Ready-to-wear fashion'},
+      {id:'costume-design',label:'Costume & theatrical fashion'},
+      {id:'accessories',label:'Accessories & jewellery design'},
+    ]},
+  ]},
+
+  { id:'craft', label:'Craft & applied arts', color:'var(--c-craft)', desc:'Skill, material, making', children:[
+    { id:'woodworking', label:'Woodworking', children:[
+      {id:'cabinetry',label:'Cabinetry & joinery'},
+      {id:'wood-carving',label:'Wood carving & sculpture'},
+      {id:'marquetry',label:'Marquetry & veneer'},
+      {id:'turning',label:'Wood turning'},{id:'lutherie',label:'Lutherie (instrument making)'},
+    ]},
+    { id:'metalsmithing', label:'Metalsmithing & jewellery', children:[
+      {id:'goldsmithing',label:'Goldsmithing & silversmithing'},
+      {id:'blacksmithing',label:'Blacksmithing & forging'},
+      {id:'enamelling',label:'Cloisonné & champleve enamel'},
+      {id:'jewellery',label:'Jewellery making'},
+    ]},
+    { id:'ceramics-craft', label:'Ceramics & glass', children:[
+      {id:'wheel-throwing',label:'Wheel-thrown pottery'},
+      {id:'hand-building',label:'Hand-building ceramics'},
+      {id:'raku',label:'Raku & atmospheric firing'},
+      {id:'glass-blowing',label:'Glass blowing'},{id:'lampworking',label:'Lampworking'},
+    ]},
+    { id:'paper-craft', label:'Paper & book arts', children:[
+      {id:'bookbinding',label:'Bookbinding'},{id:'origami',label:'Origami & paper folding'},
+      {id:'papermaking',label:'Hand papermaking'},{id:'collage',label:'Collage & decoupage'},
+      {id:'marbling',label:'Marbling & paste paper'},
+    ]},
+    { id:'culinary-arts', label:'Culinary arts', children:[
+      {id:'haute-cuisine',label:'Haute cuisine'},{id:'pastry',label:'Pastry & confectionery'},
+      {id:'fermentation',label:'Fermentation & pickling'},
+      {id:'plating',label:'Plating & food presentation'},
+      {id:'cocktail',label:'Cocktail craft & mixology'},
+    ]},
+    { id:'garden-art', label:'Garden & floral arts', children:[
+      {id:'ikebana',label:'Ikebana (Japanese flower art)'},
+      {id:'bonsai',label:'Bonsai'},{id:'landscape-garden',label:'Landscape gardening'},
+      {id:'topiary',label:'Topiary'},
+    ]},
+  ]},
+
+  { id:'digital', label:'Digital & new media arts', color:'var(--c-digital)', desc:'Screen, code, interaction', children:[
+    { id:'digital-visual', label:'Digital visual art', children:[
+      {id:'digital-painting',label:'Digital painting'},
+      {id:'generative-art',label:'Generative & algorithmic art'},
+      {id:'nft-art',label:'NFT & blockchain art'},
+      {id:'data-viz-art',label:'Data visualization as art'},
+      {id:'glitch-art',label:'Glitch art'},{id:'pixel-art',label:'Pixel art'},
+    ]},
+    { id:'interactive-art', label:'Interactive & immersive art', children:[
+      {id:'vr-art',label:'VR & AR art'},{id:'net-art',label:'Net art & web art'},
+      {id:'sensor-art',label:'Sensor-based installation'},
+      {id:'ai-art',label:'AI-generated art'},
+      {id:'biofeedback-art',label:'Biofeedback & bodily data art'},
+    ]},
+    { id:'sound-art', label:'Sound art & audio', children:[
+      {id:'sound-installation',label:'Sound installation'},
+      {id:'soundscape',label:'Soundscape composition'},
+      {id:'radio-art',label:'Radio art'},{id:'podcast-art',label:'Podcast as art form'},
+    ]},
+    { id:'ux-design', label:'UX & experience design', children:[
+      {id:'ui-design',label:'UI & visual design'},
+      {id:'interaction-design',label:'Interaction design'},
+      {id:'service-design',label:'Service design'},
+      {id:'experience-design',label:'Experience design'},
+    ]},
+  ]},
+
+  { id:'games', label:'Games as art', color:'var(--c-games)', desc:'Play, rules, interactive narrative', children:[
+    {id:'video-game-art',label:'Video game art direction'},
+    {id:'narrative-game',label:'Narrative & story-driven games'},
+    {id:'game-design',label:'Game design as creative practice'},
+    {id:'board-game-design',label:'Board game design'},
+    {id:'interactive-fiction',label:'Interactive fiction'},
+    {id:'larp',label:'LARP & tabletop RPG'},
+    {id:'sports-as-art',label:'Sport & martial arts as aesthetic practice'},
+  ]},
+];
+
+// ── STATE ──
+let navPath = [];
+let searchQ  = '';
+
+// ── UTILS ──
+function countLeaves(node) {
+  if (!node.children) return 1;
+  return node.children.reduce((s, c) => s + countLeaves(c), 0);
+}
+function flatAll(nodes, acc = [], depth = 0) {
+  for (const n of nodes) {
+    acc.push({ ...n, _depth: depth });
+    if (n.children) flatAll(n.children, acc, depth + 1);
+  }
+  return acc;
+}
+function topColorFor(nodeId) {
+  for (const top of DATA) {
+    if (findIn([top], nodeId)) return top.color;
+  }
+  return 'var(--c-other)';
+}
+function findIn(arr, id) {
+  for (const n of arr) {
+    if (n.id === id) return true;
+    if (n.children && findIn(n.children, id)) return true;
+  }
+  return false;
+}
+
+// ── COUNTS FOR HEADER ──
+function calcStats() {
+  const all = flatAll(DATA);
+  const leaves = all.filter(n => !n.children);
+  const mids   = all.filter(n => n.children && n._depth > 0);
+  document.getElementById('stat-forms').textContent = leaves.length + '+';
+  document.getElementById('stat-cats').textContent  = mids.length + '+';
+}
+
+// ── RENDER ──
+function render() {
+  if (searchQ) { renderSearch(); return; }
+
+  const bc    = document.getElementById('breadcrumb');
+  const mc    = document.getElementById('main-content');
+  const bbtn  = document.getElementById('back-btn');
+
+  // breadcrumb
+  bc.innerHTML = '';
+  const crumbs = [{ label: 'All arts', idx: -1 }, ...navPath.map((n, i) => ({ label: n.label, idx: i }))];
+  crumbs.forEach(({ label, idx }, ci) => {
+    if (ci > 0) { const sep = document.createElement('span'); sep.className = 'bc-sep'; sep.textContent = '›'; bc.appendChild(sep); }
+    const sp = document.createElement('span');
+    if (ci === crumbs.length - 1) { sp.className = 'bc-cur'; sp.textContent = label; }
+    else {
+      sp.className = 'bc-link'; sp.textContent = label;
+      sp.onclick = () => { navPath = navPath.slice(0, idx + 1); render(); };
+    }
+    bc.appendChild(sp);
+  });
+
+  bbtn.style.display = navPath.length ? 'inline-flex' : 'none';
+
+  // current nodes
+  const cur   = navPath.length ? navPath[navPath.length - 1] : null;
+  const nodes = cur ? (cur.children || []) : DATA;
+
+  mc.innerHTML = '';
+
+  const grid = document.createElement('div');
+  grid.className = 'grid' + (navPath.length === 0 ? ' top-level' : '');
+
+  nodes.forEach((node, i) => {
+    const isLeaf  = !node.children;
+    const color   = navPath.length ? topColorFor(node.id) : (node.color || 'var(--c-other)');
+    const leaves  = countLeaves(node);
+
+    const card = document.createElement('div');
+    card.className = 'card' + (isLeaf ? ' leaf' : '');
+    card.style.setProperty('--card-color', color);
+    card.style.animationDelay = (i * 18) + 'ms';
+
+    card.innerHTML =
+      `<div class="card-dot"></div>` +
+      `<div class="card-label">${node.label}</div>` +
+      (node.desc ? `<div class="card-desc">${node.desc}</div>` : '') +
+      (!isLeaf ? `<div class="card-count"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>${leaves} forms</div>` : '');
+
+    if (!isLeaf) {
+      card.onclick = () => {
+        navPath.push({ ...node, _color: color });
+        render();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    }
+    grid.appendChild(card);
+  });
+
+  mc.appendChild(grid);
+}
+
+function renderSearch() {
+  const bc   = document.getElementById('breadcrumb');
+  const mc   = document.getElementById('main-content');
+  const bbtn = document.getElementById('back-btn');
+
+  bc.innerHTML = '';
+  const home = document.createElement('span'); home.className = 'bc-link'; home.textContent = 'All arts';
+  home.onclick = () => { searchQ = ''; document.getElementById('search').value = ''; navPath = []; render(); };
+  bc.appendChild(home);
+  const sep = document.createElement('span'); sep.className = 'bc-sep'; sep.textContent = '›'; bc.appendChild(sep);
+  const cur = document.createElement('span'); cur.className = 'bc-cur'; cur.textContent = `"${document.getElementById('search').value}"`; bc.appendChild(cur);
+
+  bbtn.style.display = 'none';
+  mc.innerHTML = '';
+
+  const all  = flatAll(DATA);
+  const q    = searchQ.toLowerCase();
+  const hits = all.filter(n => n.label.toLowerCase().includes(q) || (n.desc || '').toLowerCase().includes(q));
+
+  if (!hits.length) {
+    const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'No results found.'; mc.appendChild(e); return;
+  }
+
+  const label = document.createElement('div');
+  label.className = 'results-label';
+  label.innerHTML = `<strong>${hits.length}</strong> result${hits.length !== 1 ? 's' : ''}`;
+  mc.appendChild(label);
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  hits.forEach((node, i) => {
+    const color  = topColorFor(node.id);
+    const isLeaf = !node.children;
+    const card   = document.createElement('div');
+    card.className = 'card leaf';
+    card.style.setProperty('--card-color', color);
+    card.style.animationDelay = (i * 12) + 'ms';
+    card.innerHTML =
+      `<div class="card-dot"></div>` +
+      `<div class="card-label">${node.label}</div>` +
+      (node.desc ? `<div class="card-desc">${node.desc}</div>` : '');
+    grid.appendChild(card);
+  });
+
+  mc.appendChild(grid);
+}
+
+function goBack() {
+  navPath.pop();
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function doSearch(val) {
+  searchQ = val.trim();
+  render();
+}
+
+// keyboard shortcut: / to focus search
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+    e.preventDefault();
+    document.getElementById('search').focus();
+  }
+  if (e.key === 'Escape') {
+    const s = document.getElementById('search');
+    if (searchQ) { searchQ = ''; s.value = ''; render(); }
+    else if (navPath.length) { goBack(); }
+    s.blur();
+  }
+});
+
+calcStats();
+render();
+</script>
+</body>
+</html>
