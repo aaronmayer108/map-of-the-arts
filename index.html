@@ -224,6 +224,24 @@
   .back-btn:hover { background: var(--surface2); color: var(--text); }
   .back-btn svg { flex-shrink: 0; }
 
+  .surprise-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--accent);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+  }
+  .surprise-btn:hover { background: var(--surface2); border-color: var(--accent2); }
+
   /* ── GRID ── */
   .grid {
     display: grid;
@@ -430,6 +448,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         Back
       </button>
+      <button class="surprise-btn" onclick="surpriseMe()">✦ Surprise me</button>
       <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="search" placeholder="Search all arts…" oninput="doSearch(this.value)" autocomplete="off" spellcheck="false">
@@ -1465,6 +1484,12 @@ function goBack() {
 function doSearch(val) {
   searchQ = val.trim();
   render();
+}
+
+function surpriseMe() {
+  const leaves = flatAll(DATA).filter(n => !n.children && DESCRIPTIONS[n.id]);
+  const node = leaves[Math.floor(Math.random() * leaves.length)];
+  openModal(node.label, DESCRIPTIONS[node.id], topColorFor(node.id));
 }
 
 function openModal(label, desc, color) {
