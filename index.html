@@ -415,6 +415,55 @@
     line-height: 1.75;
   }
 
+  /* ── CONNECTIONS ── */
+  .modal-box {
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .conn-section {
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+  .conn-heading {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    margin-top: 0.75rem;
+  }
+  .conn-heading:first-child { margin-top: 0; }
+  .conn-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 0.25rem;
+  }
+  .conn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 4px 10px 4px 8px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    text-align: left;
+  }
+  .conn-chip:hover { background: var(--surface2); color: var(--text); }
+  .conn-chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
     h1 { font-size: 2.4rem; }
@@ -469,6 +518,7 @@
     <div class="modal-dot" id="modal-dot"></div>
     <h2 class="modal-title" id="modal-title"></h2>
     <p class="modal-body" id="modal-body"></p>
+    <div id="modal-connections"></div>
   </div>
 </div>
 
@@ -1319,6 +1369,120 @@ const DESCRIPTIONS = {
   'sports-as-art': `The consideration of sport and martial arts as aesthetic practice — the boxer's footwork as choreography, the basketball player's improvisation as jazz. This lens reframes athletic excellence as a form of performance art valued for its form as much as its outcome.`,
 };
 
+// ── CONNECTIONS ──
+const CONNECTIONS = [
+  // Jazz lineage
+  {from:'delta-blues',    to:'trad-jazz',       type:'gave-rise-to',      label:"Blues feeling and harmonics shaped early jazz's vocabulary"},
+  {from:'trad-jazz',      to:'swing',            type:'gave-rise-to',      label:"Dixieland collective improvisation grew into big-band swing arrangements"},
+  {from:'swing',          to:'bebop',            type:'inspired-reaction', label:"Bebop rebelled against swing's commercialism with virtuosic small-group intensity"},
+  {from:'bebop',          to:'cool-jazz',        type:'inspired-reaction', label:"Cool jazz stepped back from bebop's heat toward restraint and modal harmony"},
+  {from:'bebop',          to:'hard-bop',         type:'gave-rise-to',      label:"Hard bop deepened bebop with blues and gospel soul"},
+  {from:'cool-jazz',      to:'modal-jazz',       type:'gave-rise-to',      label:"Modal jazz (Kind of Blue) emerged from cool's harmonic openness"},
+  {from:'modal-jazz',     to:'free-jazz',        type:'gave-rise-to',      label:"Free jazz dissolved modal structures into total improvisation"},
+  {from:'delta-blues',    to:'chicago-blues',    type:'gave-rise-to',      label:"Blues migrated north and was electrified into urban Chicago style"},
+  {from:'chicago-blues',  to:'rhythm-and-blues', type:'gave-rise-to',      label:"Electric blues refinement and urban polish became R&B"},
+  // Rock and pop lineage
+  {from:'rhythm-and-blues', to:'rock',           type:'gave-rise-to',      label:"Rock and roll grew directly from R&B rhythm patterns and electric guitar"},
+  {from:'gospel',          to:'soul',            type:'gave-rise-to',      label:"Soul is gospel emotion applied to secular life — Sam Cooke made the crossing"},
+  {from:'soul',            to:'rnb',             type:'gave-rise-to',      label:"Contemporary R&B carries soul's emotional directness into hip-hop production"},
+  {from:'soul',            to:'hip-hop',         type:'influenced',        label:"Soul samples and vocal hooks are foundational to hip-hop production"},
+  {from:'rock',            to:'metal',           type:'gave-rise-to',      label:"Heavy metal amplified rock's distortion and volume to extremes"},
+  {from:'rock',            to:'punk',            type:'inspired-reaction', label:"Punk stripped rock down to three chords and raw DIY aggression"},
+  {from:'punk',            to:'indie',           type:'gave-rise-to',      label:"Post-punk's DIY ethic and independent labels created indie rock"},
+  {from:'reggae',          to:'hip-hop',         type:'influenced',        label:"Reggae sound system culture and toasting directly shaped hip-hop DJing and MCing"},
+  {from:'hip-hop',         to:'beatbox',         type:'gave-rise-to',      label:"Beatboxing emerged from hip-hop when turntables weren't available"},
+  {from:'folk-celtic',     to:'folk-appalachian',type:'influenced',        label:"Celtic fiddle and ballad traditions are foundational to Appalachian music's repertoire"},
+  {from:'folk-appalachian',to:'country',         type:'gave-rise-to',      label:"Country grew from Appalachian folk ballads and string-band music, commercialized through Nashville"},
+  // Electronic lineage
+  {from:'electroacoustic', to:'ambient',         type:'influenced',        label:"Musique concrète's texture-first composition influenced ambient music's approach"},
+  {from:'soul',            to:'house',           type:'gave-rise-to',      label:"Chicago house was born from soul and disco DJ culture in the early 1980s"},
+  {from:'house',           to:'techno',          type:'shares-roots',      label:"House and techno share Black American dance club origins in Chicago and Detroit"},
+  {from:'punk',            to:'noise',           type:'gave-rise-to',      label:"Industrial noise took punk's aggression further, using sound itself as destructive material"},
+  {from:'minimalism-music',to:'ambient',         type:'influenced',        label:"Minimalist repetition and gradual process directly inspired Brian Eno's ambient conception"},
+  {from:'minimalism-music',to:'techno',          type:'influenced',        label:"Minimalist loop structures inform techno's slowly evolving, repeating patterns"},
+  {from:'synth-pop',       to:'edm',             type:'gave-rise-to',      label:"Synth-pop's embrace of electronic production laid groundwork for commercial EDM"},
+  {from:'gamelan',         to:'minimalism-music',type:'influenced',        label:"Gamelan's interlocking rhythmic patterns directly inspired Steve Reich and Philip Glass"},
+  // Opera lineage
+  {from:'opera-seria',     to:'opera-buffa',     type:'inspired-reaction', label:"Opera buffa emerged as comic relief from opera seria's formal heroics"},
+  {from:'bel-canto',       to:'verismo',         type:'inspired-reaction', label:"Verismo rejected bel canto's aristocratic beauty for lower-class rawness and raw emotion"},
+  {from:'opera',           to:'wagner-opera',    type:'inspired-reaction', label:"Wagner abolished the aria-recitative structure in favor of through-composed music drama"},
+  {from:'operetta',        to:'musical',         type:'gave-rise-to',      label:"The Broadway musical grew from operetta through Kern, Rodgers, and Berlin"},
+  {from:'musical',         to:'dance-musical',   type:'gave-rise-to',      label:"The dance musical elevated choreography from ornament to the primary dramatic language"},
+  {from:'opera',           to:'libretto',        type:'gave-rise-to',      label:"The libretto is the literary form developed to carry opera's dramatic architecture"},
+  {from:'opera',           to:'art-song',        type:'shares-roots',      label:"Opera and art song both develop the expressive possibilities of the trained solo voice with accompaniment"},
+  // Theatre lineage
+  {from:'commedia',        to:'comedy-theatre',  type:'influenced',        label:"Commedia's stock characters and improvisational energy shaped European comedy for centuries"},
+  {from:'tragedy',         to:'tragicomedy',     type:'gave-rise-to',      label:"Tragicomedy blends tragic stakes with comic resilience — Chekhov's defining dramatic form"},
+  {from:'happenings',      to:'body-art',        type:'gave-rise-to',      label:"Kaprow's Happenings established the premise that everyday life and the body can be art"},
+  {from:'fluxus',          to:'happenings',      type:'shares-roots',      label:"Fluxus and Happenings share Cagean roots and the conviction that everyday acts can be art"},
+  {from:'commedia',        to:'improv',          type:'gave-rise-to',      label:"Modern improv comedy's stock characters and rapid invention descend from commedia dell'arte"},
+  {from:'improv',          to:'sketch',          type:'gave-rise-to',      label:"Many sketches began as improvised scenes; comedy ensembles move fluidly between both forms"},
+  {from:'stand-up-comedy', to:'improv',          type:'shares-roots',      label:"Stand-up and improv share venues, performers, and the challenge of creating live comedy"},
+  {from:'lecture-performance', to:'relational-aesthetics', type:'shares-roots', label:"Both use non-art social forms (lectures, meals) as artistic material, questioning what art is"},
+  {from:'trickster-story', to:'comedy-theatre',  type:'influenced',        label:"The trickster's cunning inversions of social order are the mythological root of comedy's transgression"},
+  {from:'larp',            to:'immersive-theatre',type:'shares-roots',     label:"LARP and immersive theatre both place participants inside fictional worlds, dissolving the audience divide"},
+  // Dance lineage
+  {from:'ballet',          to:'modern-dance',    type:'inspired-reaction', label:"Modern dance (Duncan, Graham) rebelled against ballet's codified vocabulary"},
+  {from:'modern-dance',    to:'post-modern-dance',type:'inspired-reaction',label:"Judson Theater rejected even modern dance's expressivity — any movement could be dance"},
+  {from:'post-modern-dance',to:'contemp-dance',  type:'gave-rise-to',      label:"Contemporary dance absorbed post-modernism's radical openness into wide-ranging practice"},
+  {from:'noh',             to:'butoh',           type:'inspired-reaction', label:"Butoh rejected Japanese tradition including Noh yet carries its meditation on death and stillness"},
+  {from:'bharatanatyam',   to:'kathak',          type:'shares-roots',      label:"Both are Indian classical dance forms rooted in devotional temple tradition — one southern, one northern"},
+  {from:'soul',            to:'popping',         type:'gave-rise-to',      label:"Popping emerged from James Brown's groove — the 'pop' mirrors the hit of the funk beat"},
+  {from:'breakdancing',    to:'house-dance',     type:'shares-roots',      label:"Breaking and house dance share Black American urban origins and the centrality of the dance cypher"},
+  {from:'waacking',        to:'breakdancing',    type:'shares-roots',      label:"Both emerged from 1970s underground queer and Black club culture as competitive self-expression"},
+  {from:'swing-dance',     to:'breakdancing',    type:'influenced',        label:"Lindy Hop's acrobatic exchanges and rhythmic footwork influenced breaking's early development"},
+  {from:'swing',           to:'swing-dance',     type:'gave-rise-to',      label:"Swing music and swing dance evolved together — the music created the dance, the dance shaped the music"},
+  {from:'house',           to:'house-dance',     type:'gave-rise-to',      label:"House dance was born in the same Chicago and New York clubs that created the music"},
+  {from:'noh-kyogen',      to:'bunraku',         type:'shares-roots',      label:"Noh and Bunraku developed alongside each other in medieval Japan, sharing literary traditions and patronage"},
+  {from:'shadow-puppet',   to:'traditional-anim',type:'influenced',        label:"Shadow puppetry's projected silhouettes prefigured and influenced early animation's visual logic"},
+  // Visual arts
+  {from:'oil',             to:'digital-painting',type:'gave-rise-to',      label:"Digital painting tools simulate oil's mark-making and layering, inheriting its visual conventions"},
+  {from:'oil',             to:'watercolor',      type:'shares-roots',      label:"Oil and watercolor share the Western easel tradition but differ in opacity, scale, and revision"},
+  {from:'oil',             to:'documentary-photo',type:'inspired-reaction',label:"Photography's emergence freed oil painting from documentation, driving Impressionism and abstraction"},
+  {from:'fresco',          to:'mural',           type:'gave-rise-to',      label:"The mural tradition descends from fresco — painting at architectural scale for public audiences"},
+  {from:'woodblock',       to:'etching',         type:'parallel',          label:"Woodblock and engraving developed in parallel — East Asian and European printmaking traditions"},
+  {from:'collage',         to:'graffiti',        type:'influenced',        label:"Cubist collage's mixing of disparate fragments anticipated graffiti's layered image-making"},
+  {from:'mosaic',          to:'stained-glass',   type:'shares-roots',      label:"Mosaic and stained glass both build images from colored fragments within religious architecture"},
+  {from:'installation-art',to:'site-specific',   type:'gave-rise-to',      label:"Site-specific art extended installation's logic into location, making place itself the medium"},
+  {from:'mural',           to:'site-specific',   type:'shares-roots',      label:"Mural painting and site-specific art both respond to their specific architectural and social context"},
+  {from:'hip-hop',         to:'graffiti',        type:'shares-roots',      label:"Hip-hop and graffiti are both elements of the same New York street culture of the 1970s"},
+  {from:'concrete-poetry', to:'data-viz-art',    type:'shares-roots',      label:"Concrete poetry and data visualization both make information spatial, using mark arrangement to carry meaning"},
+  {from:'religious-arch',  to:'fresco',          type:'gave-rise-to',      label:"The church wall and dome created the surface and the demand for monumental fresco painting"},
+  {from:'origami',         to:'parametric-arch', type:'influenced',        label:"Origami's mathematics of folding flat surfaces into 3D forms directly influenced computational architecture"},
+  {from:'set-design',      to:'installation-art',type:'shares-roots',      label:"Set design and installation art both create total spatial environments; artists like Wilson work in both"},
+  // Film
+  {from:'avant-garde-film',to:'video-art',       type:'gave-rise-to',      label:"Video art grew from experimental film culture when portable cameras became accessible in the 1960s"},
+  {from:'video-art',       to:'sensor-art',      type:'gave-rise-to',      label:"Video art's exploration of cameras as expressive media preceded and enabled sensor-based installation"},
+  {from:'comic-art',       to:'anime',           type:'influenced',        label:"Manga's panel composition and character conventions directly shaped anime's visual language"},
+  {from:'traditional-anim',to:'anime',           type:'gave-rise-to',      label:"Japanese animation developed its distinctive style from cel animation under unique cultural conditions"},
+  {from:'traditional-anim',to:'stop-motion',     type:'shares-roots',      label:"Cel animation and stop motion share frame-by-frame construction and the same early film pioneers"},
+  {from:'fairy-tale',      to:'fantasy-film',    type:'influenced',        label:"Fairy tale archetypes — quests, magic objects, transformation — are the deep grammar of fantasy cinema"},
+  {from:'essay-film',      to:'podcast-art',     type:'parallel',          label:"Essay films and art podcasts share the essayistic mode — using a medium to think aloud rather than just document"},
+  // Literature
+  {from:'epic-trad',       to:'novel',           type:'gave-rise-to',      label:"The novel inherited epic's ambition for total social panorama and narrative sweep"},
+  {from:'myth-legend',     to:'fairy-tale',      type:'gave-rise-to',      label:"Fairy tales are domesticated myths — archetypal structures applied to human rather than divine protagonists"},
+  {from:'fable',           to:'fairy-tale',      type:'shares-roots',      label:"Fables and fairy tales both use fictional figures to illuminate moral truths, with different levels of enchantment"},
+  {from:'play-script',     to:'screenplay',      type:'gave-rise-to',      label:"The screenplay adapted theatrical scene structure and dialogue to cinematic industrial needs"},
+  {from:'essay',           to:'lyric-essay',     type:'gave-rise-to',      label:"The lyric essay extends Montaigne's associative mode with lyric poetry's compression and imagery"},
+  {from:'prose-poem',      to:'flash-fiction',   type:'shares-roots',      label:"Prose poem and flash fiction share extreme compression and the creative pressure of the very short form"},
+  {from:'griot',           to:'rap-lyrics',      type:'influenced',        label:"Griot oral tradition — storytelling with rhythm and social commentary — is a transatlantic ancestor of rap"},
+  {from:'griot',           to:'hip-hop',         type:'influenced',        label:"Griot oral performance with rhythmic storytelling and social commentary is a transatlantic ancestor of the MC"},
+  {from:'slam',            to:'spoken-word-perf',type:'gave-rise-to',      label:"Slam poetry gave spoken word performance a competitive structure and a public platform"},
+  {from:'hip-hop',         to:'spoken-word-perf',type:'gave-rise-to',      label:"Hip-hop's elevation of the MC created a mainstream platform for spoken word performance"},
+  {from:'constraint-lit',  to:'generative-art',  type:'shares-roots',      label:"Oulipo and generative art share the idea that formal rules can generate output beyond authorial control"},
+  {from:'hypertext-fiction',to:'interactive-fiction',type:'gave-rise-to', label:"Hypertext fiction's branching narratives directly evolved into interactive fiction and narrative game design"},
+  {from:'interactive-fiction',to:'narrative-game',type:'gave-rise-to',    label:"Interactive fiction's text-based branching is the direct precursor of narrative game design"},
+  // Cross-domain
+  {from:'flamenco',        to:'opera',           type:'shares-roots',      label:"Flamenco cante jondo and opera both center the singing voice as the carrier of extreme emotional truth"},
+  {from:'ikebana',         to:'landscape-garden',type:'shares-roots',      label:"Both embody Japanese principles of negative space, asymmetry, and the expression of natural process"},
+  {from:'bonsai',          to:'landscape-garden',type:'shares-roots',      label:"Bonsai and landscape gardening both distill the essential character of nature at a different scale"},
+  {from:'generative-art',  to:'ai-art',          type:'gave-rise-to',      label:"AI art is generative practice's latest evolution — neural networks replacing explicit rule systems"},
+  {from:'body-art',        to:'endurance-art',   type:'gave-rise-to',      label:"Body art's use of the artist's own body as medium led directly to endurance performance as a distinct category"},
+  {from:'sound-installation',to:'ambient',       type:'shares-roots',      label:"Sound installation and ambient music share interest in immersive sonic environments over directed listening"},
+  {from:'radio-art',       to:'podcast-art',     type:'gave-rise-to',      label:"Art radio established sound storytelling practices that podcast art inherits and extends"},
+  {from:'film-score',      to:'orchestral',      type:'shares-roots',      label:"Film scoring and orchestral music share instrumentation and technique but serve different contexts"},
+];
+
 // ── STATE ──
 let navPath = [];
 let searchQ  = '';
@@ -1415,7 +1579,7 @@ function render() {
       };
     } else {
       const d = DESCRIPTIONS[node.id];
-      if (d) card.onclick = () => openModal(node.label, d, color);
+      if (d) card.onclick = () => openModal(node.label, d, color, node.id);
     }
     grid.appendChild(card);
   });
@@ -1467,7 +1631,7 @@ function renderSearch() {
       (node.desc ? `<div class="card-desc">${node.desc}</div>` : '');
     if (isLeaf) {
       const d = DESCRIPTIONS[node.id];
-      if (d) card.onclick = () => openModal(node.label, d, color);
+      if (d) card.onclick = () => openModal(node.label, d, color, node.id);
     }
     grid.appendChild(card);
   });
@@ -1489,13 +1653,56 @@ function doSearch(val) {
 function surpriseMe() {
   const leaves = flatAll(DATA).filter(n => !n.children && DESCRIPTIONS[n.id]);
   const node = leaves[Math.floor(Math.random() * leaves.length)];
-  openModal(node.label, DESCRIPTIONS[node.id], topColorFor(node.id));
+  openModal(node.label, DESCRIPTIONS[node.id], topColorFor(node.id), node.id);
 }
 
-function openModal(label, desc, color) {
+function buildConnections(nodeId) {
+  const TYPE_LABELS = {
+    'influenced':        'Influenced',
+    'gave-rise-to':      'Gave rise to',
+    'inspired-reaction': 'Inspired reaction',
+    'shares-roots':      'Shares roots with',
+    'parallel':          'Developed in parallel with',
+  };
+  const conns = CONNECTIONS.filter(c => c.from === nodeId || c.to === nodeId);
+  if (!conns.length) return '';
+
+  const byType = {};
+  for (const c of conns) {
+    if (!byType[c.type]) byType[c.type] = [];
+    byType[c.type].push({ targetId: c.from === nodeId ? c.to : c.from, label: c.label });
+  }
+
+  const all = flatAll(DATA);
+  let html = '<div class="conn-section">';
+  for (const [type, items] of Object.entries(byType)) {
+    html += `<div class="conn-heading">${TYPE_LABELS[type]}</div><div class="conn-chips">`;
+    for (const item of items) {
+      const target = all.find(n => n.id === item.targetId);
+      if (!target) continue;
+      const color = topColorFor(item.targetId);
+      html += `<button class="conn-chip" data-node-id="${item.targetId}" title="${item.label}">` +
+              `<span class="conn-chip-dot" style="background:${color}"></span>${target.label}</button>`;
+    }
+    html += '</div>';
+  }
+  return html + '</div>';
+}
+
+function openModal(label, desc, color, nodeId) {
   document.getElementById('modal-title').textContent = label;
   document.getElementById('modal-body').textContent  = desc;
   document.getElementById('modal-dot').style.background = color || 'var(--accent)';
+  const connDiv = document.getElementById('modal-connections');
+  connDiv.innerHTML = nodeId ? buildConnections(nodeId) : '';
+  connDiv.querySelectorAll('.conn-chip[data-node-id]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.nodeId;
+      const node = flatAll(DATA).find(n => n.id === id);
+      if (node) openModal(node.label, DESCRIPTIONS[node.id] || '', topColorFor(id), id);
+    });
+  });
   document.getElementById('modal').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
