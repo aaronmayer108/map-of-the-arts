@@ -7,10 +7,40 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>document.documentElement.dataset.theme = localStorage.getItem('mota-theme') || 'light';</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
+    --bg:       #faf8f4;
+    --bg2:      #f3f0e9;
+    --bg3:      #eae7de;
+    --surface:  #e8e5db;
+    --surface2: #dedad0;
+    --border:   rgba(0,0,0,0.08);
+    --border2:  rgba(0,0,0,0.14);
+    --text:     #1c1a15;
+    --text2:    #4a4840;
+    --text3:    #8a8780;
+    --accent:   #966f1e;
+    --accent2:  #c9a84c;
+    --radius:   10px;
+    --radius-lg: 16px;
+
+    --c-music:   #4a90c0;
+    --c-poetry:  #8060c8;
+    --c-visual:  #c85858;
+    --c-perform: #3a9e7c;
+    --c-film:    #6aaa30;
+    --c-lit:     #b88020;
+    --c-arch:    #707870;
+    --c-craft:   #c07030;
+    --c-digital: #2aa8a0;
+    --c-games:   #58a840;
+    --c-other:   #787878;
+  }
+
+  html[data-theme="dark"] {
     --bg:       #0e0d0b;
     --bg2:      #161510;
     --bg3:      #1d1c17;
@@ -23,8 +53,6 @@
     --text3:    #6a6860;
     --accent:   #c9a84c;
     --accent2:  #a07830;
-    --radius:   10px;
-    --radius-lg: 16px;
 
     --c-music:   #8ab4d4;
     --c-poetry:  #b8a0e0;
@@ -464,6 +492,24 @@
     flex-shrink: 0;
   }
 
+  /* ── THEME TOGGLE ── */
+  .theme-btn {
+    position: fixed;
+    top: 14px; right: 18px;
+    z-index: 200;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 50%;
+    color: var(--text2);
+    cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+    flex-shrink: 0;
+  }
+  .theme-btn:hover { background: var(--surface2); color: var(--text); }
+  .theme-btn svg { pointer-events: none; }
+
   /* ── GRAPH VIEW ── */
   #graph-overlay {
     display: none;
@@ -517,6 +563,10 @@
 </head>
 <body>
 
+<button class="theme-btn" id="theme-btn" onclick="toggleTheme()">
+  <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  <svg id="icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
 <header>
   <div class="header-bg"></div>
   <div class="header-ornament">A Taxonomy</div>
@@ -1989,19 +2039,27 @@ function _initGraph() {
       edges.filter(e => e.from === hover.id || e.to === hover.id).flatMap(e => [e.from, e.to])
     ) : null;
 
-    // ── Draw ──
-    ctx.fillStyle = '#0e0d0b';
+    // ── Draw (theme-aware) ──
+    const dk = document.documentElement.dataset.theme === 'dark';
+    const canvasBg  = dk ? '#0e0d0b' : '#faf8f4';
+    const glowStart = dk ? 'rgba(255,255,255,0.018)' : 'rgba(120,100,60,0.04)';
+    const edgeDim   = dk ? (a) => `rgba(255,255,255,${a})` : (a) => `rgba(0,0,0,${a})`;
+    const ringColor = dk ? 'rgba(255,255,255,0.65)'  : 'rgba(0,0,0,0.35)';
+    const lbl       = dk ? (a) => `rgba(255,255,255,${a})` : (a) => `rgba(0,0,0,${a})`;
+    const legendTxt = dk ? 'rgba(255,255,255,0.42)'  : 'rgba(0,0,0,0.50)';
+
+    ctx.fillStyle = canvasBg;
     ctx.fillRect(0, 0, W, H);
 
     // Subtle sphere glow
     const sr = SPHERE_R * (FOCAL / camZ);
     const grd = ctx.createRadialGradient(cx, cy, sr * 0.1, cx, cy, sr * 1.25);
-    grd.addColorStop(0, 'rgba(255,255,255,0.018)');
-    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    grd.addColorStop(0, glowStart);
+    grd.addColorStop(1, dk ? 'rgba(255,255,255,0)' : 'rgba(120,100,60,0)');
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(cx, cy, sr * 1.25, 0, Math.PI * 2); ctx.fill();
 
-    // Edges (draw before nodes for proper depth)
+    // Edges
     edges.forEach(e => {
       const a = nodeMap[e.from], b = nodeMap[e.to];
       if (!a._p || !b._p) return;
@@ -2011,12 +2069,12 @@ function _initGraph() {
       const front = Math.max(0, Math.min(1, (avgZ + SPHERE_R) / (2 * SPHERE_R)));
       const alpha = active ? 0.82 : front * 0.16 + 0.025;
       ctx.beginPath(); ctx.moveTo(a._p.sx, a._p.sy); ctx.lineTo(b._p.sx, b._p.sy);
-      ctx.strokeStyle = active ? `rgba(${r},${g},${bC},${alpha})` : `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.strokeStyle = active ? `rgba(${r},${g},${bC},${alpha})` : edgeDim(alpha.toFixed(3));
       ctx.lineWidth   = active ? 1.6 : 0.65;
       ctx.stroke();
     });
 
-    // Nodes — back to front (painter's algorithm)
+    // Nodes — back to front
     const sorted = [...nodes].filter(n => n._p).sort((a, b) => b._p.depth - a._p.depth);
 
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
@@ -2031,12 +2089,12 @@ function _initGraph() {
       ctx.fillStyle   = n.color;
       ctx.globalAlpha = ih ? 1 : ic ? Math.max(0.5, frontAlpha) : frontAlpha * 0.82;
       ctx.fill(); ctx.globalAlpha = 1;
-      if (ih) { ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+      if (ih) { ctx.strokeStyle = ringColor; ctx.lineWidth = 1.5; ctx.stroke(); }
 
       const showLabel = ih || ic || (!hover && frontAlpha > 0.58);
       if (showLabel) {
         ctx.font = `${ih ? 11 : ic ? 10 : 9}px DM Sans,sans-serif`;
-        ctx.fillStyle = ih ? 'rgba(255,255,255,0.95)' : ic ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.34)';
+        ctx.fillStyle = ih ? lbl(0.95) : ic ? lbl(0.75) : lbl(0.34);
         ctx.fillText(n.label, p.sx, p.sy + nr + 3);
       }
     });
@@ -2048,7 +2106,7 @@ function _initGraph() {
       ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 22, ly);
       ctx.strokeStyle = `rgba(${r},${g},${b},0.82)`; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.font = '10px DM Sans,sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.40)';
+      ctx.fillStyle = legendTxt;
       ctx.fillText(label, lx + 28, ly);
     });
 
@@ -2058,6 +2116,20 @@ function _initGraph() {
   canvas.style.cursor = 'grab';
   _graph = { raf: requestAnimationFrame(tick) };
 }
+
+// ── THEME ──
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('mota-theme', next);
+  _syncThemeIcon();
+}
+function _syncThemeIcon() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  document.getElementById('icon-moon').style.display = dark ? 'none'  : 'block';
+  document.getElementById('icon-sun').style.display  = dark ? 'block' : 'none';
+}
+_syncThemeIcon();
 
 calcStats();
 render();
