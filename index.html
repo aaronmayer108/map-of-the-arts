@@ -464,6 +464,48 @@
     flex-shrink: 0;
   }
 
+  /* ── GRAPH VIEW ── */
+  #graph-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: var(--bg);
+  }
+  #graph-canvas {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .graph-close-btn {
+    position: absolute;
+    top: 16px; right: 20px;
+    z-index: 10;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: color .15s, background .15s;
+  }
+  .graph-close-btn:hover { color: var(--text); background: var(--surface); }
+  .graph-hint {
+    position: absolute;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
     h1 { font-size: 2.4rem; }
@@ -498,6 +540,7 @@
         Back
       </button>
       <button class="surprise-btn" onclick="surpriseMe()">✦ Surprise me</button>
+      <button class="surprise-btn" onclick="openGraph()" style="border-color:rgba(126,196,168,0.35);color:var(--c-perform)">✦ Connectome</button>
       <div class="search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="search" placeholder="Search all arts…" oninput="doSearch(this.value)" autocomplete="off" spellcheck="false">
@@ -511,6 +554,12 @@
   <p>A map of human artistic expression — inevitably incomplete, always evolving.</p>
   <p style="margin-top:6px">Browse freely. Every art form is a door.</p>
 </footer>
+
+<div id="graph-overlay">
+  <canvas id="graph-canvas"></canvas>
+  <button class="graph-close-btn" onclick="closeGraph()">✕ Close</button>
+  <div class="graph-hint">Click a node to explore · Drag to rearrange · Esc to close</div>
+</div>
 
 <div id="modal" onclick="closeModal(event)">
   <div class="modal-box">
@@ -1720,6 +1769,7 @@ document.addEventListener('keydown', e => {
     document.getElementById('search').focus();
   }
   if (e.key === 'Escape') {
+    if (_graph) { closeGraph(); return; }
     const modal = document.getElementById('modal');
     if (modal.classList.contains('open')) { closeModal(); return; }
     const s = document.getElementById('search');
@@ -1728,6 +1778,173 @@ document.addEventListener('keydown', e => {
     s.blur();
   }
 });
+
+// ── GRAPH VIEW ──
+let _graph = null;
+
+function openGraph() {
+  document.getElementById('graph-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  _initGraph();
+}
+
+function closeGraph() {
+  document.getElementById('graph-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  if (_graph) { cancelAnimationFrame(_graph.raf); _graph = null; }
+}
+
+function _initGraph() {
+  if (_graph) { cancelAnimationFrame(_graph.raf); }
+  const canvas = document.getElementById('graph-canvas');
+  const W = canvas.width  = window.innerWidth;
+  const H = canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+
+  const nodeIds = new Set();
+  CONNECTIONS.forEach(c => { nodeIds.add(c.from); nodeIds.add(c.to); });
+  const allFlat = flatAll(DATA);
+
+  const nodes = [], nodeMap = {};
+  nodeIds.forEach(id => {
+    const found = allFlat.find(n => n.id === id);
+    if (!found) return;
+    const nd = { id, label: found.label, color: topColorFor(id),
+      x: W/2 + (Math.random()-0.5)*W*0.5,
+      y: H/2 + (Math.random()-0.5)*H*0.5,
+      vx: 0, vy: 0, r: 7 };
+    nodes.push(nd); nodeMap[id] = nd;
+  });
+  const edges = CONNECTIONS.filter(c => nodeMap[c.from] && nodeMap[c.to]);
+
+  const EDGE_COLORS = {
+    'gave-rise-to':      'rgba(201,168,76,',
+    'influenced':        'rgba(138,180,212,',
+    'inspired-reaction': 'rgba(224,136,136,',
+    'shares-roots':      'rgba(126,196,168,',
+    'parallel':          'rgba(160,160,152,',
+  };
+  const LEGEND = [
+    { label:'Gave rise to',       color:'rgba(201,168,76,0.85)' },
+    { label:'Influenced',         color:'rgba(138,180,212,0.85)' },
+    { label:'Inspired reaction',  color:'rgba(224,136,136,0.85)' },
+    { label:'Shares roots',       color:'rgba(126,196,168,0.85)' },
+    { label:'Parallel',           color:'rgba(160,160,152,0.85)' },
+  ];
+
+  let hover = null, drag = null, dragMoved = false;
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+  function nearest(x, y) {
+    return nodes.find(n => Math.hypot(n.x-x, n.y-y) <= n.r + 5) || null;
+  }
+
+  canvas.onmousemove = e => {
+    const [x, y] = pos(e);
+    if (drag) { drag.x = x; drag.y = y; drag.vx = 0; drag.vy = 0; dragMoved = true; }
+    else { hover = nearest(x, y); canvas.style.cursor = hover ? 'pointer' : 'default'; }
+  };
+  canvas.onmousedown = e => {
+    const [x, y] = pos(e); drag = nearest(x, y); dragMoved = false;
+  };
+  canvas.onmouseup = e => {
+    if (drag && !dragMoved) {
+      const nd = allFlat.find(n => n.id === drag.id);
+      if (nd) openModal(nd.label, DESCRIPTIONS[nd.id]||'', topColorFor(nd.id), nd.id);
+    }
+    drag = null;
+  };
+  canvas.onmouseleave = () => { drag = null; hover = null; };
+
+  function tick() {
+    nodes.forEach(n => { n.fx = 0; n.fy = 0; });
+    // repulsion
+    for (let i = 0; i < nodes.length; i++) for (let j = i+1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = b.x-a.x, dy = b.y-a.y;
+      const d2 = Math.max(dx*dx+dy*dy, 100), d = Math.sqrt(d2);
+      const f = 3200 / d2;
+      a.fx -= f*dx/d; a.fy -= f*dy/d;
+      b.fx += f*dx/d; b.fy += f*dy/d;
+    }
+    // springs
+    edges.forEach(e => {
+      const a = nodeMap[e.from], b = nodeMap[e.to];
+      const dx = b.x-a.x, dy = b.y-a.y;
+      const d = Math.max(Math.hypot(dx, dy), 0.1);
+      const f = 0.04 * (d - 140);
+      a.fx += f*dx/d; a.fy += f*dy/d;
+      b.fx -= f*dx/d; b.fy -= f*dy/d;
+    });
+    // integrate
+    nodes.forEach(n => {
+      if (drag && drag.id === n.id) return;
+      n.fx += (W/2 - n.x) * 0.0012;
+      n.fy += (H/2 - n.y) * 0.0012;
+      n.vx = (n.vx + n.fx) * 0.84;
+      n.vy = (n.vy + n.fy) * 0.84;
+      n.x = Math.max(50, Math.min(W-50, n.x + n.vx));
+      n.y = Math.max(50, Math.min(H-50, n.y + n.vy));
+    });
+
+    // draw
+    ctx.fillStyle = '#0e0d0b';
+    ctx.fillRect(0, 0, W, H);
+
+    edges.forEach(e => {
+      const a = nodeMap[e.from], b = nodeMap[e.to];
+      const active = hover && (hover.id === e.from || hover.id === e.to);
+      const base = EDGE_COLORS[e.type] || 'rgba(255,255,255,';
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = active ? base+'0.65)' : 'rgba(255,255,255,0.07)';
+      ctx.lineWidth = active ? 1.5 : 0.7;
+      ctx.stroke();
+    });
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    nodes.forEach(n => {
+      const h = hover && hover.id === n.id;
+      const connected = h ? new Set(edges.filter(e => e.from===n.id||e.to===n.id).flatMap(e=>[e.from,e.to])) : null;
+      const near = connected && connected.has(n.id);
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, h ? n.r+3 : n.r, 0, Math.PI*2);
+      ctx.fillStyle = n.color;
+      ctx.globalAlpha = h ? 1 : 0.72;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      if (h) { ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1.5; ctx.stroke(); }
+
+      const neighborHighlight = hover && connected && connected.has(n.id) && !h;
+      ctx.font = h ? '11px DM Sans,sans-serif' : '9px DM Sans,sans-serif';
+      ctx.fillStyle = h ? 'rgba(255,255,255,0.95)'
+                       : neighborHighlight ? 'rgba(255,255,255,0.65)'
+                       : 'rgba(255,255,255,0.32)';
+      ctx.fillText(n.label, n.x, n.y + n.r + 3);
+    });
+
+    // legend
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    LEGEND.forEach((item, i) => {
+      const lx = 18, ly = 18 + i * 19;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx+20, ly);
+      ctx.strokeStyle = item.color; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = '10px DM Sans,sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.38)';
+      ctx.fillText(item.label, lx+26, ly);
+    });
+
+    _graph.raf = requestAnimationFrame(tick);
+  }
+
+  _graph = { raf: requestAnimationFrame(tick) };
+
+  window.addEventListener('resize', () => {
+    if (_graph) { cancelAnimationFrame(_graph.raf); _initGraph(); }
+  }, { once: true });
+}
 
 calcStats();
 render();
