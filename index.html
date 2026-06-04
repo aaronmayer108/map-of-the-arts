@@ -418,6 +418,13 @@
     position: relative;
     animation: fadeUp .2s ease;
   }
+  .modal-location {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--text3); margin: 2px 0 10px;
+    letter-spacing: 0.02em;
+  }
+  .modal-location svg { flex-shrink: 0; opacity: 0.7; }
+
   .modal-close {
     position: absolute; top: 14px; right: 16px;
     background: none; border: none;
@@ -524,6 +531,7 @@
     inset: 0;
     width: 100%;
     height: 100%;
+    touch-action: none;
   }
   .graph-close-btn {
     position: absolute;
@@ -547,9 +555,10 @@
     z-index: 10;
     font-size: 11px;
     color: var(--text3);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     pointer-events: none;
     white-space: nowrap;
+    text-align: center;
   }
 
   /* ── RESPONSIVE ── */
@@ -558,6 +567,8 @@
     .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     .search-wrap input { width: 180px; }
     .stats-row { gap: 1.2rem; }
+    .graph-hint { white-space: normal; width: 88%; font-size: 10px; bottom: 16px; }
+    .graph-close-btn { padding: 8px 18px; font-size: 14px; }
   }
 </style>
 </head>
@@ -616,6 +627,10 @@
     <button class="modal-close" onclick="closeModal()">✕</button>
     <div class="modal-dot" id="modal-dot"></div>
     <h2 class="modal-title" id="modal-title"></h2>
+    <div class="modal-location" id="modal-location" style="display:none">
+      <svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 0C3.24 0 1 2.24 1 5c0 3.75 5 9 5 9s5-5.25 5-9c0-2.76-2.24-5-5-5zm0 6.5A1.5 1.5 0 1 1 6 3.5a1.5 1.5 0 0 1 0 3z" fill="currentColor"/></svg>
+      <span id="modal-location-text"></span>
+    </div>
     <p class="modal-body" id="modal-body"></p>
     <div id="modal-connections"></div>
   </div>
@@ -1468,6 +1483,457 @@ const DESCRIPTIONS = {
   'sports-as-art': `The consideration of sport and martial arts as aesthetic practice — the boxer's footwork as choreography, the basketball player's improvisation as jazz. This lens reframes athletic excellence as a form of performance art valued for its form as much as its outcome.`,
 };
 
+// ── LOCATIONS ──
+const LOCATIONS = {
+  // Music – Vocal
+  'opera': 'Florence & Venice, Italy',
+  'art-song': 'Vienna, Austria & German states',
+  'choral': 'Flanders & Western Europe',
+  'barbershop': 'United States (African American South)',
+  'throat': 'Tuva, Siberia, Russia & Mongolia',
+  'sacred-chant': 'Rome, Italy & Constantinople (Byzantine Empire)',
+  'pop-vocal': 'United States (New York, Los Angeles, Nashville)',
+  'blues-vocal': 'Mississippi Delta, American South',
+  'gospel': 'African American South, United States',
+  'beatbox': 'South Bronx, New York City, United States',
+  // Music – Instrumental
+  'chamber': 'Vienna, Austria & London, England',
+  'orchestral': 'Vienna, Austria & German states',
+  'solo-piano': 'Vienna & Paris, Western Europe',
+  'guitar-classical': 'Spain (Iberian tradition)',
+  'organ': 'Germany & the Netherlands',
+  'wind-ensemble': 'Germany & United States',
+  'percussion-ensemble': 'United States (20th century)',
+  'string-quartet': 'Vienna, Austria (Haydn era)',
+  // Music – Folk & traditional
+  'folk-euro': 'Europe (widespread regional traditions)',
+  'folk-appalachian': 'Appalachian Mountains, United States',
+  'folk-celtic': 'Ireland, Scotland, Wales & Brittany',
+  'folk-nordic': 'Scandinavia (Sweden, Norway, Finland)',
+  'folk-balkan': 'Balkans (Bulgaria, Serbia, Romania, Macedonia)',
+  'folk-african': 'Sub-Saharan Africa (widespread traditions)',
+  'folk-latam': 'Latin America (Andes, Mexico, Brazil)',
+  'folk-mena': 'Middle East & North Africa',
+  'folk-south-asian': 'Indian Subcontinent (India, Pakistan, Bangladesh)',
+  'folk-east-asian': 'China, Japan & Korea',
+  'folk-pacific': 'Pacific Islands, Australia & New Zealand',
+  // Music – World classical
+  'hindustani': 'North India (Agra, Varanasi, Lucknow)',
+  'carnatic': 'South India (Tamil Nadu & Karnataka)',
+  'maqam': 'Arab world (Egypt, Iraq, Syria)',
+  'gagaku': 'Kyoto & Nara, Japan',
+  'gamelan': 'Java & Bali, Indonesia',
+  'guqin-music': 'China (ancient literati tradition)',
+  'persian-classical': 'Persia / Iran (Tehran, Isfahan)',
+  // Music – Jazz & blues
+  'trad-jazz': 'New Orleans, Louisiana, United States',
+  'swing': 'Harlem, New York City, United States',
+  'bebop': 'Harlem, New York City, United States',
+  'cool-jazz': 'Los Angeles & New York City, United States',
+  'hard-bop': 'New York City & Philadelphia, United States',
+  'modal-jazz': 'New York City, United States',
+  'free-jazz': 'New York City, United States',
+  'fusion': 'New York City, United States',
+  'delta-blues': 'Mississippi Delta, United States',
+  'chicago-blues': 'Chicago, Illinois, United States',
+  'rhythm-and-blues': 'New York & Los Angeles, United States',
+  // Music – Pop, rock & derivatives
+  'rock': 'Memphis, Tennessee & London, England',
+  'pop': 'United States & United Kingdom (global)',
+  'metal': 'Birmingham, England & United States',
+  'punk': 'New York City, USA & London, England',
+  'indie': 'United States & United Kingdom',
+  'country': 'Nashville, Tennessee, United States',
+  'reggae': 'Kingston, Jamaica',
+  'soul': 'Detroit, Michigan & Memphis, Tennessee, United States',
+  'rnb': 'United States (New York, Los Angeles, Atlanta)',
+  'hip-hop': 'South Bronx, New York City, United States',
+  'latin-pop': 'Puerto Rico, Colombia & Miami, United States',
+  // Music – Electronic
+  'techno': 'Detroit, Michigan, United States',
+  'house': 'Chicago, Illinois, United States',
+  'drum-and-bass': 'London, England',
+  'ambient': 'London, England & Düsseldorf, Germany',
+  'noise': 'Tokyo, Japan & Germany',
+  'electroacoustic': 'Paris, France & Cologne, Germany',
+  'edm': 'Global (Netherlands, Germany, United States)',
+  'synth-pop': 'Düsseldorf, Germany & London, England',
+  'experimental-elec': 'Germany & United States',
+  // Music – 20th–21st century composed
+  'impressionism': 'Paris, France',
+  'serialism': 'Vienna, Austria (Second Viennese School)',
+  'minimalism-music': 'New York City, United States',
+  'spectralism': 'Paris, France (IRCAM)',
+  'new-complexity': 'Germany & United Kingdom',
+  'microtonality': 'United States & Europe (widespread)',
+  'aleatoric': 'Darmstadt, Germany & New York City, United States',
+  'film-score': 'Hollywood, Los Angeles, United States',
+  // Poetry – Lyric
+  'sonnet': 'Sicily & Florence, Italy (Petrarch era)',
+  'ode': 'Ancient Greece (Pindar, Horace)',
+  'elegy': 'Ancient Greece & Rome',
+  'ghazal': 'Persia / Iran → Urdu-speaking India & Pakistan',
+  'haiku': 'Edo-period Japan',
+  'confessional': 'New England, United States (Lowell, Plath era)',
+  'imagism': 'London, England & United States (Pound, H.D.)',
+  'pastoral': 'Ancient Greece → Renaissance Italy & England',
+  // Poetry – Epic & narrative
+  'epic': 'Ancient Greece (Homer) & Mesopotamia',
+  'ballad': 'Medieval Britain & France',
+  'verse-novel': 'England & Russia (Pushkin, Browning era)',
+  'romance-poetry': 'Medieval France (Chrétien de Troyes)',
+  'mythology-poetry': 'Ancient Greece, Rome & Norse Scandinavia',
+  // Poetry – Dramatic
+  'dramatic-monologue': 'Victorian England (Robert Browning)',
+  'verse-drama': 'Athens, Greece → Elizabethan England → Germany',
+  'spoken-word': 'New York City & San Francisco, United States',
+  // Poetry – Fixed forms & prosody
+  'villanelle': 'France (16th century) → England',
+  'sestina': 'Occitania (Provence), France',
+  'pantoum': 'Malaysia → France → worldwide',
+  'terza-rima': 'Florence, Italy (Dante)',
+  'rondeau': 'Medieval France',
+  'acrostic': 'Ancient Greece & Rome (widespread)',
+  // Poetry – Free verse & open form
+  'vers-libre': 'France (Mallarmé, Verlaine) & United States',
+  'projective-verse': 'Black Mountain, North Carolina, United States',
+  'breath-line': 'San Francisco & New York, United States (Beat Generation)',
+  'prose-poem': 'Paris, France (Baudelaire, Rimbaud)',
+  // Poetry – Oral & folk traditions
+  'griot': 'West Africa (Mali, Senegal, Guinea)',
+  'skaldic': 'Iceland & Norway (Old Norse tradition)',
+  'troubadour': 'Occitania (Southern France, Provence)',
+  'qasida': 'Arabian Peninsula → Persia → India',
+  'slam': 'Chicago, Illinois, United States (Green Mill, 1986)',
+  'rap-lyrics': 'South Bronx, New York City, United States',
+  // Poetry – Visual & experimental
+  'concrete-poetry': 'São Paulo, Brazil & Switzerland (simultaneous emergence)',
+  'language-poetry': 'San Francisco & New York, United States (1970s)',
+  'flarf': 'Internet / United States (early 2000s)',
+  'erasure': 'United States (contemporary)',
+  // Visual – Painting
+  'oil': 'Flanders (Jan van Eyck) → Netherlands & Italy',
+  'watercolor': 'England (Turner, Constable) & Europe',
+  'acrylic': 'United States (New York, mid-20th century)',
+  'tempera': 'Florence & Siena, Italy (medieval–Renaissance)',
+  'fresco': 'Rome & Florence, Italy',
+  'encaustic': 'Ancient Greece & Egypt (Fayum portraits)',
+  'gouache': 'France & Italy (European tradition)',
+  'ink-painting': 'China & Japan (East Asian literati tradition)',
+  'miniature-painting': 'Persia / Iran → Mughal India & medieval Europe',
+  'icon-painting': 'Byzantine Empire (Constantinople, Mount Athos) & Russia',
+  // Visual – Drawing & illustration
+  'charcoal': 'Prehistoric caves → European academic tradition',
+  'graphite': 'Cumberland, England (discovered 1565) → worldwide',
+  'pen-ink': 'Ancient Egypt & China → global',
+  'pastel': 'France & Italy (La Tour, Degas era)',
+  'contour': 'European academic tradition (Florence, Rome)',
+  'illustration': 'Victorian England → United States',
+  'comic-art': 'United States (New York) & Japan',
+  'storyboard': 'Hollywood, Los Angeles, United States',
+  // Visual – Printmaking
+  'woodblock': 'China (Tang Dynasty) → Japan (Ukiyo-e, Edo) → Europe',
+  'etching': 'Germany (Dürer era) → Netherlands',
+  'lithography': 'Munich, Germany (invented by Senefelder, 1796)',
+  'silkscreen': 'New York, United States (Pop Art era)',
+  'linocut': 'Germany & Eastern Europe → Russia & Africa',
+  'mezzotint': 'Germany → England (17th century)',
+  'digital-print': 'United States & Europe (late 20th century)',
+  // Visual – Sculpture
+  'carving': 'Prehistoric → Ancient Greece, India, Africa, Mesoamerica',
+  'modelling': 'Ancient Greece → Renaissance Italy',
+  'casting': 'Ancient Greece & China (Bronze Age)',
+  'welding-sculpt': 'United States & Europe (20th century)',
+  'kinetic-sculpt': 'Paris, France & New York (Alexander Calder)',
+  'installation-art': 'Germany & United States (Fluxus era, 1960s)',
+  'site-specific': 'United States (Utah, New York) & United Kingdom',
+  'ice-sand': 'Global (ephemeral traditions worldwide)',
+  // Visual – Photography
+  'documentary-photo': 'United States (FSA era — Dorothea Lange, Walker Evans)',
+  'portrait-photo': 'France & England (1840s daguerreotype era)',
+  'landscape-photo': 'United States (Ansel Adams — Yosemite, California)',
+  'street-photo': 'Paris, France & New York City, United States',
+  'fine-art-photo': 'United States & Europe (Photo-Secession, Alfred Stieglitz)',
+  'experimental-photo': 'Bauhaus, Germany & United States',
+  'astro-photo': 'United States & Europe (observatory tradition)',
+  // Visual – Textile & fiber arts
+  'weaving': 'Ancient Mesopotamia & Egypt → worldwide',
+  'embroidery': 'Ancient China & Japan → medieval Europe',
+  'quilting': "United States (American South — Gee's Bend, Alabama)",
+  'knitting-crochet': 'Scotland & Northern Europe → worldwide',
+  'lacemaking': 'Flanders, Belgium & Venice, Italy',
+  'batik': 'Java, Indonesia → West Africa → worldwide',
+  'feltmaking': 'Central Asia & Anatolia (nomadic traditions)',
+  'fiber-art': 'United States (Anni Albers, 20th century)',
+  // Visual – Mosaic, glass & ceramics
+  'mosaic': 'Ancient Rome & Byzantine Ravenna, Italy',
+  'stained-glass': 'Paris, France (Chartres Cathedral) & Germany',
+  'blown-glass': 'Ancient Syria → Murano, Venice, Italy',
+  'pottery': 'Ancient China, Japan (Jōmon) & Near East → worldwide',
+  'porcelain': 'Jingdezhen, China (Tang–Song dynasties)',
+  'enamel': 'Limoges, France & Byzantine Empire',
+  // Visual – Street & public art
+  'mural': 'Mexico City, Mexico (Rivera, Orozco — 1920s muralists)',
+  'graffiti': 'South Bronx & Brooklyn, New York City, United States',
+  'paste-up': 'New York City & Paris (1990s urban art scene)',
+  'yarn-bomb': 'Houston, Texas, United States (Knitta Please, 2005)',
+  'public-sculpture': 'Europe & United States (widespread)',
+  // Performing – Theatre
+  'tragedy': 'Athens, Greece (5th century BCE)',
+  'comedy-theatre': 'Athens, Greece & Rome (Aristophanes, Plautus)',
+  'tragicomedy': 'Russia & Western Europe (Chekhov era)',
+  'melodrama': 'Paris, France (early 19th century) → England',
+  'absurdist': 'Paris, France (Beckett, Ionesco — post-WWII)',
+  'epic-theatre': 'Berlin, Germany (Bertolt Brecht, Weimar Republic)',
+  'devised': 'United Kingdom & United States (1970s onward)',
+  'immersive-theatre': 'London, England (Punchdrunk, early 2000s)',
+  'verbatim': 'London, England (Tricycle Theatre tradition)',
+  'commedia': 'Lombardy & Venice, Italy (16th century)',
+  // Performing – Musical theatre
+  'musical': 'New York City (Broadway), United States',
+  'operetta': 'Vienna, Austria & Paris, France',
+  'revue': 'Paris, France (Folies Bergère) → New York',
+  'jukebox-musical': 'New York City (Broadway), United States',
+  'dance-musical': 'New York City (Broadway), United States',
+  // Performing – Concert dance
+  'ballet': 'Paris, France → St. Petersburg, Russia (Imperial Ballet)',
+  'contemp-dance': 'United States & Europe (global)',
+  'modern-dance': 'United States (Isadora Duncan, Martha Graham)',
+  'post-modern-dance': 'New York City, United States (Judson Dance Theater)',
+  'butoh': 'Tokyo, Japan (post-WWII — Tatsumi Hijikata)',
+  'physical-theatre': 'France & United Kingdom (Lecoq, DV8)',
+  // Performing – Social & partner dance
+  'ballroom': 'England → Europe → worldwide',
+  'swing-dance': 'Harlem, New York City, United States',
+  'tango': 'Buenos Aires, Argentina (Río de la Plata region)',
+  'salsa': 'Puerto Rico & New York City, United States',
+  'folk-dance': 'Global (widespread regional traditions)',
+  // Performing – Street & club dance
+  'breakdancing': 'South Bronx, New York City, United States',
+  'waacking': 'Los Angeles, California, United States (1970s clubs)',
+  'popping': 'Fresno, California, United States',
+  'house-dance': 'Chicago & New York City, United States',
+  'krump': 'Los Angeles, California, United States',
+  // Performing – Traditional & ritual dance
+  'bharatanatyam': 'Tamil Nadu, South India (Tanjore region)',
+  'noh-kyogen': 'Kyoto, Japan (Muromachi period)',
+  'chinese-dance': 'China (ancient court traditions)',
+  'flamenco': 'Andalusia, Spain (Jerez de la Frontera, Seville)',
+  'hula': 'Hawaii, United States',
+  'kathak': 'North India (Lucknow & Jaipur, Mughal courts)',
+  'cossack-dance': 'Ukraine (Zaporozhian Cossacks)',
+  // Performing – Circus & physical arts
+  'acrobatics': 'Ancient China (Han Dynasty) & Egypt → worldwide',
+  'trapeze': 'Paris, France (Jules Léotard, 1859)',
+  'juggling': 'Ancient Egypt & China → medieval European courts',
+  'tight-rope': 'Ancient China & medieval Europe',
+  'clown': 'Ancient Greece → European courts → United States circus',
+  'contortion': 'Mongolia & Russia (acrobatic traditions)',
+  'magic': 'Ancient Egypt, India & Europe → United States vaudeville',
+  'parkour-art': 'Paris, France (David Belle, Lisses — 1980s)',
+  // Performing – Puppetry & object theatre
+  'marionette': 'Lyon, France & Brussels, Belgium',
+  'hand-puppet': 'England (Punch & Judy) → worldwide',
+  'shadow-puppet': 'China & India → Southeast Asia (Indonesia, Thailand)',
+  'bunraku': 'Osaka, Japan (17th century)',
+  'rod-puppet': 'China, Indonesia & India',
+  'object-theatre': 'Europe & United States (20th century)',
+  // Performing – Stand-up & spoken performance
+  'stand-up-comedy': 'United States (vaudeville → New York, Los Angeles clubs)',
+  'storytelling-perf': 'Global (oral tradition → contemporary United States)',
+  'spoken-word-perf': 'New York City & San Francisco, United States',
+  'improv': 'Chicago, Illinois, United States (Second City, 1959)',
+  'sketch': 'United Kingdom (Cambridge Footlights) & Chicago, United States',
+  'lecture-performance': 'United States & Europe (conceptual art context)',
+  // Performing – Performance art
+  'happenings': 'New York City, United States (Allan Kaprow, 1959)',
+  'fluxus': 'Wiesbaden, Germany & New York City (George Maciunas)',
+  'body-art': 'New York City, United States & Yugoslavia (1970s)',
+  'endurance-art': 'Global (United States, Yugoslavia — 1970s–present)',
+  'relational-aesthetics': 'Paris, France (Nicolas Bourriaud, 1990s)',
+  // Performing – Opera & music-theatre
+  'opera-seria': 'Naples, Italy (17th–18th century)',
+  'opera-buffa': 'Naples & Venice, Italy (18th century)',
+  'bel-canto': 'Naples & Milan, Italy (Rossini, Bellini, Donizetti)',
+  'verismo': 'Milan, Italy (Puccini, Mascagni, Leoncavallo)',
+  'wagner-opera': 'Bayreuth, Germany (Wagner\'s Festspielhaus)',
+  'modern-opera': 'Global (United States, Europe — 20th–21st century)',
+  'chinese-opera': 'Beijing, China (Peking Opera / Jingju, 19th century)',
+  'noh': 'Kyoto & Nara, Japan (Zeami Motokiyo, 14th century)',
+  // Film – Narrative cinema
+  'drama': 'Global (United States, France, Italy — worldwide)',
+  'comedy-film': 'United States (Hollywood) & France',
+  'thriller': 'United States & United Kingdom (Hitchcock era)',
+  'horror-film': 'Germany (Expressionism) → United States',
+  'sci-fi': 'France (Méliès pioneer) → United States (Hollywood)',
+  'fantasy-film': 'United States (Hollywood) → worldwide',
+  'western': 'United States (Hollywood & American Southwest)',
+  'war-film': 'United States & United Kingdom',
+  'romance-film': 'France & United States (Hollywood golden age)',
+  'musical-film': 'Hollywood, Los Angeles, United States',
+  'biopic': 'United States & United Kingdom',
+  // Film – Documentary
+  'observational': 'United States (Drew Associates) & France (cinéma vérité)',
+  'expository': 'United Kingdom (Grierson, GPO Film Unit, 1930s)',
+  'participatory': 'United States & France (1960s)',
+  'essay-film': 'Paris, France (Chris Marker, Agnès Varda)',
+  'mockumentary': 'United States (1980s)',
+  'nature-doc': 'Bristol, England (BBC Natural History Unit)',
+  'true-crime': 'United States (Serial, Netflix era)',
+  // Film – Experimental
+  'avant-garde-film': 'Paris, France & Berlin, Germany (1920s)',
+  'structuralist-film': 'United States & United Kingdom (1970s)',
+  'video-art': 'Germany (Nam June Paik) → United States (1960s)',
+  'found-footage-film': 'United States & Europe (1990s–2000s)',
+  'expanded-cinema': 'United States & Europe (1960s)',
+  // Film – Animation
+  'traditional-anim': 'Hollywood, Los Angeles, United States (Walt Disney, 1920s)',
+  'stop-motion': 'United Kingdom & United States (Willis O\'Brien)',
+  'claymation': 'Portland, Oregon, United States (Will Vinton)',
+  '2d-digital': 'United States & Japan',
+  '3d-cgi': 'Emeryville, California, United States (Pixar)',
+  'motion-graphics': 'Hollywood, Los Angeles, United States (Saul Bass)',
+  'anime': 'Tokyo, Japan',
+  'rotoscope': 'New York City, United States (Max Fleischer, 1910s)',
+  // Film – Short & non-theatrical
+  'short-film': 'Lyon, France (Lumière Brothers, 1895)',
+  'music-video': 'New York City, United States (MTV, 1981)',
+  'commercial': 'New York City (Madison Avenue) & London, England',
+  'web-series': 'United States (internet era, 2000s)',
+  // Literature – Fiction
+  'novel': 'England (Defoe, Richardson — 18th century) → France',
+  'novella': 'Germany & Italy (Boccaccio, Goethe era)',
+  'short-story': 'United States (Poe, Hawthorne) & Russia (Chekhov)',
+  'flash-fiction': 'Global (United States contemporary)',
+  'genre-fiction': 'United States & United Kingdom',
+  'literary-fiction': 'France, United States & Latin America (global)',
+  'historical-fiction': 'Scotland, England (Sir Walter Scott, early 19th century)',
+  'magical-realism': 'Colombia & Argentina (García Márquez, Borges)',
+  'autofiction': 'France (Serge Doubrovsky coined the term, 1977)',
+  // Literature – Nonfiction
+  'essay': 'Périgord, France (Montaigne, 16th century) → England',
+  'memoir': 'Global (widespread tradition)',
+  'biography': 'Ancient Greece (Plutarch) → England (Boswell, Johnson)',
+  'narrative-nonfiction': 'United States (New Journalism, New York, 1960s)',
+  'criticism': 'France & United States (19th–20th century)',
+  'nature-writing': 'Concord, Massachusetts, United States (Thoreau)',
+  'travel-writing': 'Global (ancient → British Empire era → contemporary)',
+  'food-writing': 'France → United States (MFK Fisher, Julia Child)',
+  'sports-writing': 'United States (primarily)',
+  // Literature – Dramatic literature
+  'play-script': 'Athens, Greece (5th century BCE) → worldwide',
+  'radio-play': 'United Kingdom (BBC Radio) & United States',
+  'screenplay': 'Hollywood, Los Angeles, United States',
+  'teleplay': 'United States & United Kingdom',
+  'libretto': 'Florence, Venice & Naples, Italy',
+  // Literature – Oral & folk
+  'myth-legend': 'Ancient Greece, Mesopotamia, Norse Scandinavia & Mesoamerica',
+  'fairy-tale': 'Germany (Brothers Grimm) & France (Perrault)',
+  'epic-trad': 'Ancient Greece (Homer) & Mesopotamia (Gilgamesh)',
+  'fable': 'Ancient Greece (Aesop) → India (Panchatantra) → worldwide',
+  'trickster-story': 'West Africa, Native North America & Norse Scandinavia',
+  // Literature – Hybrid & experimental
+  'graphic-novel': 'New York City, United States (Will Eisner) & Japan',
+  'lyric-essay': 'United States (contemporary)',
+  'found-text': 'Zurich, Switzerland & Paris, France (Dada, 1916)',
+  'hypertext-fiction': 'United States (early internet, MIT, 1990s)',
+  'constraint-lit': 'Paris, France (Oulipo, founded 1960)',
+  // Architecture – Architecture
+  'residential-arch': 'Global (prehistoric → worldwide)',
+  'civic-arch': 'Athens, Greece → Rome → worldwide',
+  'religious-arch': 'Ancient Egypt & Mesopotamia → worldwide',
+  'landscape-arch': 'United States (Frederick Law Olmsted, New York)',
+  'urban-design': 'Paris, France (Haussmann) → United States',
+  'parametric-arch': 'Los Angeles, United States & London (Gehry, Hadid)',
+  'vernacular-arch': 'Global (region-specific traditional building)',
+  // Architecture – Interior design
+  'residential-int': 'France & England (18th century aristocratic interiors)',
+  'commercial-int': 'United States & Europe (20th century)',
+  'exhibition-design': 'Germany (Bauhaus) & United States',
+  'set-design': 'Germany → Hollywood, United States',
+  // Architecture – Product & industrial design
+  'furniture': 'Scandinavia (Denmark, Sweden) & Milan, Italy',
+  'transportation': 'Germany (Bauhaus) & United States (industrial design era)',
+  'consumer-product': 'United States & Germany (Braun, Raymond Loewy)',
+  'tool-design': 'England (Industrial Revolution) → global',
+  // Architecture – Graphic design
+  'typography': 'Mainz, Germany (Gutenberg, 1440s) → Netherlands → worldwide',
+  'branding': 'United States (20th century corporate identity)',
+  'poster-design': 'Paris, France (Toulouse-Lautrec) & Germany (Bauhaus)',
+  'book-design': 'England (William Morris) & Germany (Bauhaus)',
+  'motion-design': 'Hollywood, Los Angeles, United States (Saul Bass)',
+  // Architecture – Fashion & textile design
+  'haute-couture': 'Paris, France (Worth, Chanel, Dior — 19th–20th century)',
+  'ready-to-wear': 'United States & France (post-WWII democratization)',
+  'costume-design': 'Hollywood, United States & United Kingdom',
+  'accessories': 'Florence & Milan, Italy (leather goods, jewellery)',
+  // Craft – Woodworking
+  'cabinetry': 'England & France (Chippendale, Louis XIV tradition)',
+  'wood-carving': 'Global (Africa, Europe, Asia — widespread)',
+  'marquetry': 'France & Netherlands (17th century inlay tradition)',
+  'turning': 'Global (ancient craft tradition)',
+  'lutherie': 'Cremona, Italy (Stradivari & Guarneri)',
+  // Craft – Metalsmithing & jewellery
+  'goldsmithing': 'Ancient Egypt & Greece → Byzantine Empire → Europe',
+  'blacksmithing': 'Global (ancient, widespread craft)',
+  'enamelling': 'Limoges, France & Byzantine Empire',
+  'jewellery': 'Ancient India, Egypt & Greece → worldwide',
+  // Craft – Ceramics & glass
+  'wheel-throwing': 'Ancient Mesopotamia (Ur, ~3500 BCE) → worldwide',
+  'hand-building': 'Global (prehistoric worldwide)',
+  'raku': 'Kyoto, Japan (Raku family, 16th century)',
+  'glass-blowing': 'Ancient Syria → Murano, Venice, Italy',
+  'lampworking': 'Murano, Venice, Italy → Germany → United States',
+  // Craft – Paper & book arts
+  'bookbinding': 'Ancient Egypt & Coptic tradition → medieval Europe',
+  'origami': 'Edo-period Japan → worldwide',
+  'papermaking': 'China (Han Dynasty, ~105 CE) → Central Asia → Europe',
+  'collage': 'Paris, France & Berlin, Germany (Braque, Picasso, Dada)',
+  'marbling': 'Persia / Iran → Ottoman Turkey → Venice → Europe',
+  // Craft – Culinary arts
+  'haute-cuisine': 'Paris & Lyon, France (Escoffier, 19th century)',
+  'pastry': 'Paris, France & Vienna, Austria',
+  'fermentation': 'Global (Korea, Germany, ancient Mesopotamia)',
+  'plating': 'France (Nouvelle Cuisine, 1970s) & Japan',
+  'cocktail': 'New Orleans & New York City, United States (19th century)',
+  // Craft – Garden & floral arts
+  'ikebana': 'Kyoto, Japan (6th century Buddhist tradition)',
+  'bonsai': 'China (penjing origin) → Japan (Kamakura period)',
+  'landscape-garden': 'England (Capability Brown) & France (Versailles)',
+  'topiary': 'Ancient Rome → Renaissance Italy & France',
+  // Digital – Digital visual art
+  'digital-painting': 'United States & Japan (1990s, Photoshop era)',
+  'generative-art': 'Germany & United States (Vera Molnár, Harold Cohen, 1970s)',
+  'nft-art': 'Global (blockchain era, United States-led, 2017–present)',
+  'data-viz-art': 'United States (Edward Tufte, Silicon Valley era)',
+  'glitch-art': 'United States & Europe (internet era)',
+  'pixel-art': 'United States & Japan (early video game era, 1970s)',
+  // Digital – Interactive & immersive art
+  'vr-art': 'United States (Silicon Valley, MIT Media Lab)',
+  'net-art': 'Global (Europe & United States, mid-1990s)',
+  'sensor-art': 'United States & Austria (MIT Media Lab, Ars Electronica)',
+  'ai-art': 'Global (United States, United Kingdom — DeepDream, GANs, 2010s)',
+  'biofeedback-art': 'United States & Europe (media art context, 1970s–present)',
+  // Digital – Sound art & audio
+  'sound-installation': 'Germany (Beuys era) & United States (Max Neuhaus)',
+  'soundscape': 'Vancouver, Canada (R. Murray Schafer, 1970s)',
+  'radio-art': 'Germany & United States (inter-war period)',
+  'podcast-art': 'United States (PRX, Radiotopia — 2000s onward)',
+  // Digital – UX & experience design
+  'ui-design': 'Silicon Valley (Cupertino & San Francisco), United States',
+  'interaction-design': 'Palo Alto, California, United States (PARC) & Scandinavia',
+  'service-design': 'United Kingdom & Scandinavia (Design Council)',
+  'experience-design': 'United States (Pine & Gilmore, 1999)',
+  // Games
+  'video-game-art': 'United States (Atari era) & Japan (Nintendo, Sony)',
+  'narrative-game': 'United States & Japan (Interplay, Black Isle, Square)',
+  'game-design': 'United States & Japan (arcade culture origin)',
+  'board-game-design': 'Germany (Eurogame tradition — Settlers of Catan)',
+  'interactive-fiction': 'Cambridge, Massachusetts, United States (MIT — Zork, 1977)',
+  'larp': 'Scandinavia (Nordic larp — Denmark, Norway) & United States',
+  'sports-as-art': 'Global (East Asian martial arts — Japan, China, Korea)',
+};
+
 // ── CONNECTIONS ──
 const CONNECTIONS = [
   // Jazz lineage
@@ -1842,6 +2308,11 @@ function openModal(label, desc, color, nodeId) {
   document.getElementById('modal-title').textContent = label;
   document.getElementById('modal-body').textContent  = desc;
   document.getElementById('modal-dot').style.background = color || 'var(--accent)';
+  const locDiv  = document.getElementById('modal-location');
+  const locText = document.getElementById('modal-location-text');
+  const loc = nodeId && LOCATIONS[nodeId];
+  if (loc) { locText.textContent = loc; locDiv.style.display = 'flex'; }
+  else { locDiv.style.display = 'none'; }
   const connDiv = document.getElementById('modal-connections');
   connDiv.innerHTML = nodeId ? buildConnections(nodeId) : '';
   connDiv.querySelectorAll('.conn-chip[data-node-id]').forEach(btn => {
@@ -1897,9 +2368,12 @@ function closeGraph() {
 function _initGraph() {
   if (_graph) cancelAnimationFrame(_graph.raf);
   const canvas = document.getElementById('graph-canvas');
-  const W = canvas.width  = window.innerWidth;
-  const H = canvas.height = window.innerHeight;
+  const dpr = window.devicePixelRatio || 1;
+  const W = window.innerWidth, H = window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
   const cx = W / 2, cy = H / 2;
 
   // ── Node positions on sphere via Fibonacci spiral ──
@@ -2008,6 +2482,78 @@ function _initGraph() {
     e.preventDefault();
     camZ = Math.max(MIN_CAM, Math.min(MAX_CAM, camZ * (1 + e.deltaY * 0.0012)));
   }, { passive: false });
+
+  // ── Touch (mobile) ──
+  const isMobile = 'ontouchstart' in window;
+  document.querySelector('.graph-hint').textContent = isMobile
+    ? 'Tap a node to explore · Drag to rotate · Pinch to zoom'
+    : 'Click a node · Drag to rotate · Scroll to zoom · Esc to close';
+
+  let _tNode = null, _tX0 = 0, _tY0 = 0, _pinchD0 = null, _pinchCamZ = null;
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    velP = velY = 0;
+    const ts = Array.from(e.touches);
+    if (ts.length === 1) {
+      const t = ts[0];
+      const rect = canvas.getBoundingClientRect();
+      const tx = t.clientX - rect.left, ty = t.clientY - rect.top;
+      lastMX = t.clientX; lastMY = t.clientY;
+      _tX0 = t.clientX; _tY0 = t.clientY;
+      _pinchD0 = null; isDrag = false;
+      let best = null, bestD = Infinity;
+      nodes.forEach(n => {
+        if (!n._p) return;
+        const d = Math.hypot(n._p.sx - tx, n._p.sy - ty);
+        const hit = Math.max(8, 8 * n._p.s) + 16;
+        if (d < hit && d < bestD) { best = n; bestD = d; }
+      });
+      _tNode = best;
+    } else if (ts.length === 2) {
+      _tNode = null; isDrag = true; // suppress inertia during pinch
+      _pinchD0 = Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+      _pinchCamZ = camZ;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const ts = Array.from(e.touches);
+    if (ts.length === 1) {
+      const t = ts[0];
+      isDrag = true;
+      const dY = (t.clientX - lastMX) * 0.006;
+      const dP = (t.clientY - lastMY) * 0.006;
+      yaw -= dY; velY = dY;
+      pitch += dP; velP = dP;
+      pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+      lastMX = t.clientX; lastMY = t.clientY;
+    } else if (ts.length === 2 && _pinchD0 !== null) {
+      const d = Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+      camZ = Math.max(MIN_CAM, Math.min(MAX_CAM, _pinchCamZ * (_pinchD0 / d)));
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    const rem = Array.from(e.touches);
+    if (rem.length === 0) {
+      const t = e.changedTouches[0];
+      if (_tNode && Math.hypot(t.clientX - _tX0, t.clientY - _tY0) < 12) {
+        const nd = allFlat.find(n => n.id === _tNode.id);
+        if (nd) openModal(nd.label, DESCRIPTIONS[nd.id] || '', topColorFor(nd.id), nd.id);
+      }
+      isDrag = false; _tNode = null; _pinchD0 = null;
+    } else if (rem.length === 1) {
+      _pinchD0 = null; isDrag = false;
+      lastMX = rem[0].clientX; lastMY = rem[0].clientY;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchcancel', () => {
+    isDrag = false; _tNode = null; _pinchD0 = null;
+  }, { passive: true });
 
   // ── Render loop ──
   function tick() {
