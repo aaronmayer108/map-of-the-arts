@@ -1532,6 +1532,56 @@ const CONNECTIONS = [
   {from:'film-score',      to:'orchestral',      type:'shares-roots',      label:"Film scoring and orchestral music share instrumentation and technique but serve different contexts"},
 ];
 
+// ── CANVAS NODE COLORS (per sub-category, HSL-derived) ──
+function hsl2hex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0');
+  };
+  return '#' + f(0) + f(8) + f(4);
+}
+
+const DOMAIN_HSL = {
+  music:   [207, 47, 68], poetry:  [263, 47, 75], visual:  [  0, 60, 70],
+  perform: [157, 36, 63], film:    [ 90, 40, 60], lit:     [ 40, 65, 66],
+  arch:    [168,  7, 63], craft:   [ 25, 63, 66], digital: [176, 47, 60],
+  games:   [100, 40, 62],
+};
+
+const NODE_COLORS = (() => {
+  const out = {};
+  for (const domain of DATA) {
+    const [bh, bs, bl] = DOMAIN_HSL[domain.id] || [0, 0, 55];
+    out[domain.id] = hsl2hex(bh, bs, bl);
+    if (!domain.children) continue;
+    const subs = domain.children;
+    subs.forEach((sub, si) => {
+      const hd = subs.length > 1 ? (si / (subs.length - 1) - 0.5) * 44 : 0;
+      const ld = si % 2 === 0 ? 7 : -7;
+      const sh = (bh + hd + 360) % 360;
+      const sl = Math.max(38, Math.min(82, bl + ld));
+      const subHex = hsl2hex(sh, bs, sl);
+      out[sub.id] = subHex;
+      if (!sub.children) return;
+      sub.children.forEach((child, ci) => {
+        if (!child.children) {
+          out[child.id] = subHex;
+        } else {
+          // 3rd-level container (e.g. dance → concert-dance → ballet)
+          const h2 = sub.children.length > 1 ? (ci / (sub.children.length - 1) - 0.5) * 16 : 0;
+          const l2 = ci % 2 === 0 ? 4 : -4;
+          const childHex = hsl2hex((sh + h2 + 360) % 360, bs, Math.max(38, Math.min(82, sl + l2)));
+          out[child.id] = childHex;
+          child.children.forEach(leaf => { out[leaf.id] = childHex; });
+        }
+      });
+    });
+  }
+  return out;
+})();
+
 // ── STATE ──
 let navPath = [];
 let searchQ  = '';
@@ -1817,7 +1867,7 @@ function _initGraph() {
     const fr = Math.sqrt(Math.max(0, 1 - fy * fy));
     const ft = GOLDEN * i;
     return {
-      id, label: found ? found.label : id, color: topColorFor(id),
+      id, label: found ? found.label : id, color: NODE_COLORS[id] || '#888888',
       ox: Math.cos(ft) * fr * SPHERE_R,
       oy: fy * SPHERE_R,
       oz: Math.sin(ft) * fr * SPHERE_R,
