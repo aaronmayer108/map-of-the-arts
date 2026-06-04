@@ -1795,155 +1795,218 @@ function closeGraph() {
 }
 
 function _initGraph() {
-  if (_graph) { cancelAnimationFrame(_graph.raf); }
+  if (_graph) cancelAnimationFrame(_graph.raf);
   const canvas = document.getElementById('graph-canvas');
   const W = canvas.width  = window.innerWidth;
   const H = canvas.height = window.innerHeight;
   const ctx = canvas.getContext('2d');
+  const cx = W / 2, cy = H / 2;
 
+  // ── Node positions on sphere via Fibonacci spiral ──
   const nodeIds = new Set();
   CONNECTIONS.forEach(c => { nodeIds.add(c.from); nodeIds.add(c.to); });
   const allFlat = flatAll(DATA);
+  const idArr = Array.from(nodeIds);
+  const N = idArr.length;
+  const SPHERE_R = Math.min(W, H) * 0.30;
+  const GOLDEN   = Math.PI * (3 - Math.sqrt(5));
 
-  const nodes = [], nodeMap = {};
-  nodeIds.forEach(id => {
-    const found = allFlat.find(n => n.id === id);
-    if (!found) return;
-    const nd = { id, label: found.label, color: topColorFor(id),
-      x: W/2 + (Math.random()-0.5)*W*0.5,
-      y: H/2 + (Math.random()-0.5)*H*0.5,
-      vx: 0, vy: 0, r: 7 };
-    nodes.push(nd); nodeMap[id] = nd;
+  const nodes = idArr.map((id, i) => {
+    const found = allFlat.find(nd => nd.id === id);
+    const fy = 1 - (i / (N - 1)) * 2;
+    const fr = Math.sqrt(Math.max(0, 1 - fy * fy));
+    const ft = GOLDEN * i;
+    return {
+      id, label: found ? found.label : id, color: topColorFor(id),
+      ox: Math.cos(ft) * fr * SPHERE_R,
+      oy: fy * SPHERE_R,
+      oz: Math.sin(ft) * fr * SPHERE_R,
+      _p: null
+    };
   });
-  const edges = CONNECTIONS.filter(c => nodeMap[c.from] && nodeMap[c.to]);
+  const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const edges   = CONNECTIONS.filter(c => nodeMap[c.from] && nodeMap[c.to]);
 
-  const EDGE_COLORS = {
-    'gave-rise-to':      'rgba(201,168,76,',
-    'influenced':        'rgba(138,180,212,',
-    'inspired-reaction': 'rgba(224,136,136,',
-    'shares-roots':      'rgba(126,196,168,',
-    'parallel':          'rgba(160,160,152,',
+  const EC = {
+    'gave-rise-to':      [201, 168,  76],
+    'influenced':        [138, 180, 212],
+    'inspired-reaction': [224, 136, 136],
+    'shares-roots':      [126, 196, 168],
+    'parallel':          [160, 160, 152],
   };
   const LEGEND = [
-    { label:'Gave rise to',       color:'rgba(201,168,76,0.85)' },
-    { label:'Influenced',         color:'rgba(138,180,212,0.85)' },
-    { label:'Inspired reaction',  color:'rgba(224,136,136,0.85)' },
-    { label:'Shares roots',       color:'rgba(126,196,168,0.85)' },
-    { label:'Parallel',           color:'rgba(160,160,152,0.85)' },
+    { label: 'Gave rise to',      c: EC['gave-rise-to']      },
+    { label: 'Influenced',        c: EC['influenced']        },
+    { label: 'Inspired reaction', c: EC['inspired-reaction'] },
+    { label: 'Shares roots',      c: EC['shares-roots']      },
+    { label: 'Parallel',          c: EC['parallel']          },
   ];
 
-  let hover = null, drag = null, dragMoved = false;
+  // ── Camera / rotation state ──
+  let pitch = 0.25, yaw = 0;
+  let velP  = 0,    velY = 0;
+  let camZ  = SPHERE_R * 2.8;
+  const FOCAL   = SPHERE_R * 2.2;
+  const MIN_CAM = SPHERE_R * 1.45;
+  const MAX_CAM = SPHERE_R * 6.0;
 
-  function pos(e) {
-    const r = canvas.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top];
-  }
-  function nearest(x, y) {
-    return nodes.find(n => Math.hypot(n.x-x, n.y-y) <= n.r + 5) || null;
+  // ── Interaction state ──
+  let isDrag = false, lastMX = 0, lastMY = 0;
+  let downNode = null, downX = 0, downY = 0;
+  let mouseX = -9999, mouseY = -9999;
+  let hover = null;
+
+  // ── 3-D helpers ──
+  function applyRot(x0, y0, z0) {
+    const cy = Math.cos(yaw), sy = Math.sin(yaw);
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
+    return {
+      x:  cy * x0 + sy * sp * y0 + sy * cp * z0,
+      y:             cp * y0      -       sp * z0,
+      z: -sy * x0 + cy * sp * y0 + cy * cp * z0
+    };
   }
 
-  canvas.onmousemove = e => {
-    const [x, y] = pos(e);
-    if (drag) { drag.x = x; drag.y = y; drag.vx = 0; drag.vy = 0; dragMoved = true; }
-    else { hover = nearest(x, y); canvas.style.cursor = hover ? 'pointer' : 'default'; }
-  };
+  function project(x0, y0, z0) {
+    const {x, y, z} = applyRot(x0, y0, z0);
+    const depth = camZ - z;           // camera at +camZ, looking toward –Z
+    if (depth < 1) return null;
+    const s = FOCAL / depth;
+    return { sx: cx + x * s, sy: cy - y * s, z, depth, s };
+  }
+
+  // ── Mouse / wheel ──
   canvas.onmousedown = e => {
-    const [x, y] = pos(e); drag = nearest(x, y); dragMoved = false;
+    isDrag = true; lastMX = e.clientX; lastMY = e.clientY;
+    downNode = hover; downX = e.clientX; downY = e.clientY;
+    velP = velY = 0;
+    canvas.style.cursor = 'grabbing';
+  };
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+    if (isDrag) {
+      const dY = (e.clientX - lastMX) * 0.006;
+      const dP = (e.clientY - lastMY) * 0.006;
+      yaw   -= dY; velY = dY;
+      pitch += dP; velP = dP;
+      pitch  = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, pitch));
+      lastMX = e.clientX; lastMY = e.clientY;
+    }
   };
   canvas.onmouseup = e => {
-    if (drag && !dragMoved) {
-      const nd = allFlat.find(n => n.id === drag.id);
-      if (nd) openModal(nd.label, DESCRIPTIONS[nd.id]||'', topColorFor(nd.id), nd.id);
+    if (downNode && Math.hypot(e.clientX - downX, e.clientY - downY) < 6) {
+      const nd = allFlat.find(n => n.id === downNode.id);
+      if (nd) openModal(nd.label, DESCRIPTIONS[nd.id] || '', topColorFor(nd.id), nd.id);
     }
-    drag = null;
+    isDrag = false; downNode = null;
+    canvas.style.cursor = hover ? 'pointer' : 'grab';
   };
-  canvas.onmouseleave = () => { drag = null; hover = null; };
+  canvas.onmouseleave = () => { isDrag = false; hover = null; mouseX = mouseY = -9999; };
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    camZ = Math.max(MIN_CAM, Math.min(MAX_CAM, camZ * (1 + e.deltaY * 0.0012)));
+  }, { passive: false });
 
+  // ── Render loop ──
   function tick() {
-    nodes.forEach(n => { n.fx = 0; n.fy = 0; });
-    // repulsion
-    for (let i = 0; i < nodes.length; i++) for (let j = i+1; j < nodes.length; j++) {
-      const a = nodes[i], b = nodes[j];
-      const dx = b.x-a.x, dy = b.y-a.y;
-      const d2 = Math.max(dx*dx+dy*dy, 100), d = Math.sqrt(d2);
-      const f = 3200 / d2;
-      a.fx -= f*dx/d; a.fy -= f*dy/d;
-      b.fx += f*dx/d; b.fy += f*dy/d;
+    // Inertial spin after drag release
+    if (!isDrag) {
+      yaw   -= velY; velY *= 0.90;
+      pitch += velP; velP *= 0.90;
+      pitch  = Math.max(-Math.PI/2 + 0.05, Math.min(Math.PI/2 - 0.05, pitch));
     }
-    // springs
-    edges.forEach(e => {
-      const a = nodeMap[e.from], b = nodeMap[e.to];
-      const dx = b.x-a.x, dy = b.y-a.y;
-      const d = Math.max(Math.hypot(dx, dy), 0.1);
-      const f = 0.04 * (d - 140);
-      a.fx += f*dx/d; a.fy += f*dy/d;
-      b.fx -= f*dx/d; b.fy -= f*dy/d;
-    });
-    // integrate
-    nodes.forEach(n => {
-      if (drag && drag.id === n.id) return;
-      n.fx += (W/2 - n.x) * 0.0012;
-      n.fy += (H/2 - n.y) * 0.0012;
-      n.vx = (n.vx + n.fx) * 0.84;
-      n.vy = (n.vy + n.fy) * 0.84;
-      n.x = Math.max(50, Math.min(W-50, n.x + n.vx));
-      n.y = Math.max(50, Math.min(H-50, n.y + n.vy));
-    });
 
-    // draw
+    // Project
+    nodes.forEach(n => { n._p = project(n.ox, n.oy, n.oz); });
+
+    // Hover — frontmost node within hit radius
+    if (!isDrag) {
+      let best = null, bestD = Infinity;
+      nodes.forEach(n => {
+        if (!n._p) return;
+        const d = Math.hypot(n._p.sx - mouseX, n._p.sy - mouseY);
+        const hit = Math.max(3, 8 * n._p.s) + 5;
+        if (d < hit && d < bestD) { best = n; bestD = d; }
+      });
+      // prefer frontmost among close candidates
+      hover = best;
+      canvas.style.cursor = hover ? 'pointer' : 'grab';
+    }
+
+    const hConn = hover ? new Set(
+      edges.filter(e => e.from === hover.id || e.to === hover.id).flatMap(e => [e.from, e.to])
+    ) : null;
+
+    // ── Draw ──
     ctx.fillStyle = '#0e0d0b';
     ctx.fillRect(0, 0, W, H);
 
+    // Subtle sphere glow
+    const sr = SPHERE_R * (FOCAL / camZ);
+    const grd = ctx.createRadialGradient(cx, cy, sr * 0.1, cx, cy, sr * 1.25);
+    grd.addColorStop(0, 'rgba(255,255,255,0.018)');
+    grd.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(cx, cy, sr * 1.25, 0, Math.PI * 2); ctx.fill();
+
+    // Edges (draw before nodes for proper depth)
     edges.forEach(e => {
       const a = nodeMap[e.from], b = nodeMap[e.to];
+      if (!a._p || !b._p) return;
       const active = hover && (hover.id === e.from || hover.id === e.to);
-      const base = EDGE_COLORS[e.type] || 'rgba(255,255,255,';
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = active ? base+'0.65)' : 'rgba(255,255,255,0.07)';
-      ctx.lineWidth = active ? 1.5 : 0.7;
+      const [r, g, bC] = EC[e.type] || [200, 200, 200];
+      const avgZ  = (a._p.z + b._p.z) / 2;
+      const front = Math.max(0, Math.min(1, (avgZ + SPHERE_R) / (2 * SPHERE_R)));
+      const alpha = active ? 0.82 : front * 0.16 + 0.025;
+      ctx.beginPath(); ctx.moveTo(a._p.sx, a._p.sy); ctx.lineTo(b._p.sx, b._p.sy);
+      ctx.strokeStyle = active ? `rgba(${r},${g},${bC},${alpha})` : `rgba(255,255,255,${alpha.toFixed(3)})`;
+      ctx.lineWidth   = active ? 1.6 : 0.65;
       ctx.stroke();
     });
 
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    nodes.forEach(n => {
-      const h = hover && hover.id === n.id;
-      const connected = h ? new Set(edges.filter(e => e.from===n.id||e.to===n.id).flatMap(e=>[e.from,e.to])) : null;
-      const near = connected && connected.has(n.id);
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, h ? n.r+3 : n.r, 0, Math.PI*2);
-      ctx.fillStyle = n.color;
-      ctx.globalAlpha = h ? 1 : 0.72;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      if (h) { ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1.5; ctx.stroke(); }
+    // Nodes — back to front (painter's algorithm)
+    const sorted = [...nodes].filter(n => n._p).sort((a, b) => b._p.depth - a._p.depth);
 
-      const neighborHighlight = hover && connected && connected.has(n.id) && !h;
-      ctx.font = h ? '11px DM Sans,sans-serif' : '9px DM Sans,sans-serif';
-      ctx.fillStyle = h ? 'rgba(255,255,255,0.95)'
-                       : neighborHighlight ? 'rgba(255,255,255,0.65)'
-                       : 'rgba(255,255,255,0.32)';
-      ctx.fillText(n.label, n.x, n.y + n.r + 3);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    sorted.forEach(n => {
+      const p  = n._p;
+      const ih = hover && hover.id === n.id;
+      const ic = hConn && hConn.has(n.id) && !ih;
+      const frontAlpha = Math.max(0.10, (p.z + SPHERE_R) / (2 * SPHERE_R));
+      const nr = Math.max(2.5, 8 * p.s);
+
+      ctx.beginPath(); ctx.arc(p.sx, p.sy, ih ? nr * 1.5 : nr, 0, Math.PI * 2);
+      ctx.fillStyle   = n.color;
+      ctx.globalAlpha = ih ? 1 : ic ? Math.max(0.5, frontAlpha) : frontAlpha * 0.82;
+      ctx.fill(); ctx.globalAlpha = 1;
+      if (ih) { ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1.5; ctx.stroke(); }
+
+      const showLabel = ih || ic || (!hover && frontAlpha > 0.58);
+      if (showLabel) {
+        ctx.font = `${ih ? 11 : ic ? 10 : 9}px DM Sans,sans-serif`;
+        ctx.fillStyle = ih ? 'rgba(255,255,255,0.95)' : ic ? 'rgba(255,255,255,0.78)' : 'rgba(255,255,255,0.34)';
+        ctx.fillText(n.label, p.sx, p.sy + nr + 3);
+      }
     });
 
-    // legend
+    // Legend
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    LEGEND.forEach((item, i) => {
-      const lx = 18, ly = 18 + i * 19;
-      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx+20, ly);
-      ctx.strokeStyle = item.color; ctx.lineWidth = 1.5; ctx.stroke();
+    LEGEND.forEach(({label, c: [r, g, b]}, i) => {
+      const lx = 18, ly = 20 + i * 20;
+      ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 22, ly);
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.82)`; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.font = '10px DM Sans,sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.38)';
-      ctx.fillText(item.label, lx+26, ly);
+      ctx.fillStyle = 'rgba(255,255,255,0.40)';
+      ctx.fillText(label, lx + 28, ly);
     });
 
     _graph.raf = requestAnimationFrame(tick);
   }
 
+  canvas.style.cursor = 'grab';
   _graph = { raf: requestAnimationFrame(tick) };
-
-  window.addEventListener('resize', () => {
-    if (_graph) { cancelAnimationFrame(_graph.raf); _initGraph(); }
-  }, { once: true });
 }
 
 calcStats();
